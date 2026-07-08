@@ -115,6 +115,10 @@ export interface FiatHolding {
   user_id: string;
   /** FK ke tabel sources */
   source_id: string;
+  /** Nama bank atau entitas */
+  name: string;
+  /** Jenis fiat: bank (simpanan biasa) atau debt (utang/piutang) */
+  type: 'bank' | 'debt';
   /** Kode mata uang (contoh: "IDR", "USD") */
   currency: string;
   /** Jumlah nominal */
@@ -295,4 +299,15 @@ export interface Project {
   updated_at: string;
   deleted_at: string | null;
   sync_status: SyncStatus;
+}
+
+export interface GarapanTask {
+  id: string;
+  project_id: string;
+  title: string;
+  is_completed: boolean;
+  date: string;
+  sync_status: SyncStatus;
+  updated_at?: string;
+  deleted_at?: string | null;
 }

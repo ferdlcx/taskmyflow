@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Trash2, CheckCircle, Circle, Edit2 } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Circle, Edit2, TrendingUp, CheckSquare, Square } from 'lucide-react';
 
 const MOCK_GARAPAN = [
   { id: '1', platform: 'Galxe', estimated_reward: '$50', target_date: '2026-07-15', description: 'Testnet V2 Campaign', status: 'active' },
@@ -9,9 +9,16 @@ const MOCK_GARAPAN = [
   { id: '3', platform: 'Bybit', estimated_reward: 'Mantle Tokens', target_date: '2026-06-30', description: 'MNT Staking Pool', status: 'completed' },
 ];
 
+const MOCK_DAILY_TASKS = [
+  { id: 't1', title: 'Check-in Galxe', is_completed: false },
+  { id: 't2', title: 'Claim Binance Megadrop Points', is_completed: true },
+  { id: 't3', title: 'Interact with zkSync dApps', is_completed: false },
+];
+
 export default function GarapanPage() {
   const [projects, setProjects] = useState(MOCK_GARAPAN);
   const [showAdd, setShowAdd] = useState(false);
+  const [dailyTasks, setDailyTasks] = useState(MOCK_DAILY_TASKS);
 
   const toggleStatus = (id: string) => {
     setProjects(prev => prev.map(p => p.id === id ? { ...p, status: p.status === 'active' ? 'completed' : 'active' } : p));
@@ -21,8 +28,12 @@ export default function GarapanPage() {
     setProjects(prev => prev.filter(p => p.id !== id));
   };
 
+  const toggleDailyTask = (id: string) => {
+    setDailyTasks(prev => prev.map(t => t.id === id ? { ...t, is_completed: !t.is_completed } : t));
+  };
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6 font-sans">
+    <div className="max-w-4xl mx-auto space-y-6 font-sans pb-12">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-black uppercase tracking-tight text-black">Garapan & Airdrop</h1>
         <button 
@@ -31,6 +42,36 @@ export default function GarapanPage() {
         >
           <Plus className="w-5 h-5" /> TAMBAH BARU
         </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="brutalist-card p-4 bg-accent-blue/20 border-2 border-black shadow-[4px_4px_0px_#000]">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="w-5 h-5" />
+            <h2 className="text-lg font-black uppercase">Proyeksi Reward</h2>
+          </div>
+          <div className="text-3xl font-black">$1,250 + 100 BNB</div>
+          <p className="text-xs font-bold uppercase mt-2 text-text-muted">Berdasarkan 3 Proyek Aktif</p>
+        </div>
+        
+        <div className="brutalist-card p-4 bg-accent-pink/20 border-2 border-black shadow-[4px_4px_0px_#000]">
+          <div className="flex items-center gap-2 mb-2">
+            <CheckSquare className="w-5 h-5" />
+            <h2 className="text-lg font-black uppercase">Daily Tracker</h2>
+          </div>
+          <div className="space-y-2 mt-3">
+            {dailyTasks.map(t => (
+              <div key={t.id} className="flex items-center gap-3">
+                <button onClick={() => toggleDailyTask(t.id)} className="hover:scale-110 transition-transform">
+                  {t.is_completed ? <CheckSquare className="w-5 h-5 text-black" /> : <Square className="w-5 h-5 text-black" />}
+                </button>
+                <span className={`text-sm font-bold uppercase ${t.is_completed ? 'line-through opacity-50' : ''}`}>
+                  {t.title}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {showAdd && (

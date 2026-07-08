@@ -17,7 +17,7 @@ export function calculateNetWorth(
   cryptoPrices: Record<string, number>,
   displayCurrency: 'USD' | 'IDR',
   staticUsdRate: number = 16500
-): number {
+): { totalCrypto: number, totalFiatBank: number, totalFiatDebt: number, netWorth: number } {
   let cash = 0;
   let receivablesNotPaid = 0;
   let payablesNotPaid = 0;
@@ -54,9 +54,17 @@ export function calculateNetWorth(
 
   const totalNetWorthUSD = totalFiatUSD + totalCryptoUSD;
 
+  let totalCrypto = totalCryptoUSD;
+  let totalFiatBank = cash / staticUsdRate;
+  let totalFiatDebt = debtNet / staticUsdRate;
+  let netWorth = totalNetWorthUSD;
+
   if (displayCurrency === 'IDR') {
-    return totalNetWorthUSD * staticUsdRate;
+    totalCrypto *= staticUsdRate;
+    totalFiatBank = cash;
+    totalFiatDebt = debtNet;
+    netWorth = totalNetWorthUSD * staticUsdRate;
   }
   
-  return totalNetWorthUSD;
+  return { totalCrypto, totalFiatBank, totalFiatDebt, netWorth };
 }

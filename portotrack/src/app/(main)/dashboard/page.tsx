@@ -7,7 +7,11 @@ import { Plus, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Eye, EyeO
 
 // ─── Mock Data ─────────────────────────────────────────
 
-const MOCK_NET_WORTH = 47_825_340;
+const MOCK_CRYPTO_TOTAL = 47_825_340;
+const MOCK_FIAT_BANK = 12_500_000;
+const MOCK_FIAT_DEBT = 5_000_000; // Piutang
+const MOCK_NET_WORTH = MOCK_CRYPTO_TOTAL + MOCK_FIAT_BANK + MOCK_FIAT_DEBT;
+
 const MOCK_PNL_AMOUNT = 3_214_500;
 const MOCK_PNL_PERCENT = 7.21;
 const MOCK_CURRENCY = 'IDR';
@@ -67,23 +71,38 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* Crypto Net Worth Card */}
+      {/* Main Net Worth Card */}
       <div className="brutalist-card p-6 md:p-8 bg-accent-amber">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-black font-bold uppercase text-sm">Total Nilai Portofolio (Crypto)</p>
-          <button onClick={() => setHideBalance(!hideBalance)} className="p-1 hover:bg-black/10 transition-colors">
-            {hideBalance ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+          <p className="text-black font-bold uppercase text-sm border-2 border-black bg-white px-2 py-1 shadow-[2px_2px_0px_#000]">Total Kekayaan Bersih</p>
+          <button onClick={() => setHideBalance(!hideBalance)} className="p-1 hover:bg-black/10 transition-colors border-2 border-black bg-white shadow-[2px_2px_0px_#000]">
+            {hideBalance ? <EyeOff className="w-5 h-5 text-black" /> : <Eye className="w-5 h-5 text-black" />}
           </button>
         </div>
-        <h2 className="text-4xl md:text-5xl font-black text-black mb-4 tracking-tighter">
+        <h2 className="text-4xl md:text-6xl font-black text-black mb-6 tracking-tighter">
           {displayCurrency(MOCK_NET_WORTH, currency)}
         </h2>
-        <div className={`inline-flex items-center gap-2 px-4 py-2 border-2 border-black font-bold shadow-[2px_2px_0px_#000] bg-white`}>
-          {isProfit ? <TrendingUp className="w-5 h-5 text-accent-emerald" /> : <TrendingDown className="w-5 h-5 text-accent-rose" />}
-          <span className={isProfit ? 'text-accent-emerald' : 'text-accent-rose'}>
-            {isProfit ? '+' : ''}{displayCurrency(MOCK_PNL_AMOUNT, currency)}
-          </span>
-          <span className="text-black ml-1">({isProfit ? '+' : ''}{MOCK_PNL_PERCENT}%)</span>
+        
+        {/* Breakdown */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t-4 border-black pt-6">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-black uppercase text-black">Aset Crypto</span>
+            <span className="text-xl font-black text-black bg-white border-2 border-black px-2 py-1 shadow-[2px_2px_0px_#000] inline-block w-fit">
+              {displayCurrency(MOCK_CRYPTO_TOTAL, currency)}
+            </span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-black uppercase text-black">Bank / E-Wallet</span>
+            <span className="text-xl font-black text-black bg-white border-2 border-black px-2 py-1 shadow-[2px_2px_0px_#000] inline-block w-fit">
+              {displayCurrency(MOCK_FIAT_BANK, currency)}
+            </span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-black uppercase text-black">Utang & Piutang</span>
+            <span className="text-xl font-black text-black bg-white border-2 border-black px-2 py-1 shadow-[2px_2px_0px_#000] inline-block w-fit">
+              {displayCurrency(MOCK_FIAT_DEBT, currency)}
+            </span>
+          </div>
         </div>
       </div>
 

@@ -22,6 +22,7 @@ import type {
   Deadline,
   HabitEntry,
   Project,
+  GarapanTask,
 } from './types';
 
 /**
@@ -38,6 +39,7 @@ class PortoTrackDB extends Dexie {
   deadlines!: EntityTable<Deadline, 'id'>;
   habits!: Table<HabitEntry>;
   projects!: EntityTable<Project, 'id'>;
+  garapan_tasks!: EntityTable<GarapanTask, 'id'>;
 
   constructor() {
     super('portotrack-db');
@@ -125,6 +127,18 @@ class PortoTrackDB extends Dexie {
         'user_id',
         'platform',
         'status',
+        'sync_status',
+        'updated_at',
+        'deleted_at'
+      ].join(', '),
+    });
+    
+    this.version(4).stores({
+      garapan_tasks: [
+        '&id',
+        'project_id',
+        'date',
+        'is_completed',
         'sync_status',
         'updated_at',
         'deleted_at'
