@@ -1,0 +1,20 @@
+flowchart LR
+    A[Login] --> B[Dashboard]
+    B --> C[Holdings List]
+    B --> D[Watchlist / Cumsun]
+    B --> E[Sources: CEX/Wallet]
+    B --> F[Settings]
+
+    C --> C1[Asset Detail]
+    C1 --> C2[Riwayat Transaksi]
+    C1 --> C3[Tambah Transaksi]
+
+    D --> D1[Tambah ke Watchlist]
+    D --> D2[Convert ke Holding]
+    D2 --> C3
+
+    E --> E1[Tambah Sumber Baru]
+    E --> E2["Edit / Hapus Sumber (soft delete)"]
+
+    F --> F1[Pilih Mata Uang Utama]
+    F --> F2[Atur Kurs]

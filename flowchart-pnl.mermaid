@@ -1,0 +1,10 @@
+flowchart TD
+    A[Pengguna tambah transaksi buy/sell] --> B[Simpan ke tabel transactions]
+    B --> C[v_holdings view recompute qty_net dan avg_cost_usd]
+    C --> D[priceStore ambil harga terkini dari price_cache]
+    D --> E{qty_net lebih dari 0?}
+    E -- Ya, masih holding --> F["Unrealized PnL = (harga_now - avg_cost) x qty_net"]
+    E -- Tidak, sudah dijual semua --> G["Realized PnL = akumulasi qty_sell x (harga_jual - avg_cost saat itu)"]
+    F --> H[Tampilkan di Dashboard dan Asset Detail]
+    G --> H
+    H --> I[Badge umur data harga: "update X menit lalu"]

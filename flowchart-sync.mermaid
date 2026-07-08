@@ -1,0 +1,20 @@
+flowchart TD
+    A[User Action: Add / Edit / Delete] --> B[Tulis ke Dexie lokal - optimistic]
+    B --> C[Tandai sync_status = pending]
+    C --> D[Masuk Sync Queue]
+    D --> E{Online?}
+    E -- Tidak --> F[Tunggu, retry saat reconnect]
+    F --> E
+    E -- Ya --> G[Push perubahan ke Supabase]
+    G --> H{Sukses?}
+    H -- Tidak --> I[Retry exponential backoff, status tetap pending]
+    I --> G
+    H -- Ya --> J[Tandai sync_status = synced, update updated_at]
+
+    K[App Dibuka / Interval Berkala] --> L[Pull rows WHERE updated_at > last_synced_at]
+    L --> M{deleted_at terisi?}
+    M -- Ya --> N[Soft-delete / hapus versi lokal di Dexie]
+    M -- Tidak --> O[Upsert ke Dexie]
+    N --> P[UI update reaktif via Pinia]
+    O --> P
+    J --> P

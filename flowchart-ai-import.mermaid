@@ -1,0 +1,18 @@
+flowchart TD
+    A[Pengguna paste teks bebas ke form Smart Import] --> B[Client kirim teks ke Supabase Edge Function]
+    B --> C[Edge Function susun prompt + responseSchema]
+    C --> D[Panggil Gemini API - Flash/Flash-Lite]
+    D --> E[Gemini balikin JSON array transaksi terstruktur]
+    E --> F[Edge Function cocokkan asset_symbol & source_name ke data existing]
+    F --> G{Match ditemukan dengan yakin?}
+    G -- Ya --> H[Tandai baris status: ok]
+    G -- Tidak --> I[Tandai baris status: perlu review]
+    H --> J[Kirim hasil parsing ke client]
+    I --> J
+    J --> K[Tampilkan preview list - editable per baris]
+    K --> L{Aksi pengguna}
+    L -- "Tambahkan Semua" --> M[Batch insert baris status ok ke transactions]
+    L -- Edit baris perlu review --> N[Pengguna lengkapi/koreksi manual]
+    N --> M
+    L -- Hapus baris --> O[Baris dibuang dari draft, tidak masuk DB]
+    M --> P[v_holdings & PnL otomatis recompute]
