@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import HabitHeatmap from '@/components/HabitHeatmap';
+import { Plus, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 // ─── Mock Data ─────────────────────────────────────────
 
@@ -46,94 +47,85 @@ export default function DashboardPage() {
   const isProfit = MOCK_PNL_AMOUNT >= 0;
 
   return (
-    <div className="px-4 md:px-8 py-6 md:py-8 max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-8 font-sans">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <p className="text-text-secondary text-sm">Selamat datang 👋</p>
-          <h1 className="text-xl font-bold text-text-primary mt-0.5">Beranda</h1>
+          <h1 className="text-3xl font-black uppercase tracking-tight text-black">Beranda</h1>
         </div>
         <Link
           href="/smart-import"
-          className="flex items-center gap-2 px-4 py-2 rounded-xl gradient-emerald text-white text-sm font-medium
-            hover:shadow-lg hover:shadow-accent-emerald/20 transition-all duration-300 active:scale-95"
+          className="flex items-center gap-2 px-5 py-2.5 bg-accent-emerald text-black text-sm font-bold border-2 border-black shadow-[4px_4px_0px_#000] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_#000] active:translate-x-[0px] active:translate-y-[0px] active:shadow-[2px_2px_0px_#000] transition-all"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          Smart Import
+          <Plus className="w-5 h-5" />
+          SMART IMPORT
         </Link>
       </div>
 
-      {/* Crypto Net Worth Card (Original) */}
-      <div className="glass-card p-6 animate-fade-in-up">
-        <p className="text-text-secondary text-sm mb-1">Total Nilai Portofolio (Crypto)</p>
-        <h2 className="text-3xl md:text-4xl font-bold gradient-text mb-3">
+      {/* Crypto Net Worth Card */}
+      <div className="brutalist-card p-6 md:p-8 bg-accent-amber">
+        <p className="text-black font-bold uppercase text-sm mb-2">Total Nilai Portofolio (Crypto)</p>
+        <h2 className="text-4xl md:text-5xl font-black text-black mb-4 tracking-tighter">
           {formatCurrency(MOCK_NET_WORTH, currency)}
         </h2>
-        <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold
-          ${isProfit ? 'bg-accent-emerald/15 text-accent-emerald' : 'bg-accent-rose/15 text-accent-rose'}`}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            {isProfit ? <path d="M12 19V5M5 12l7-7 7 7" /> : <path d="M12 5v14M5 12l7 7 7-7" />}
-          </svg>
-          {isProfit ? '+' : ''}{formatCurrency(MOCK_PNL_AMOUNT, currency)}
-          <span className="text-xs opacity-80">({isProfit ? '+' : ''}{MOCK_PNL_PERCENT}%)</span>
+        <div className={`inline-flex items-center gap-2 px-4 py-2 border-2 border-black font-bold shadow-[2px_2px_0px_#000] bg-white`}>
+          {isProfit ? <TrendingUp className="w-5 h-5 text-accent-emerald" /> : <TrendingDown className="w-5 h-5 text-accent-rose" />}
+          <span className={isProfit ? 'text-accent-emerald' : 'text-accent-rose'}>
+            {isProfit ? '+' : ''}{formatCurrency(MOCK_PNL_AMOUNT, currency)}
+          </span>
+          <span className="text-black ml-1">({isProfit ? '+' : ''}{MOCK_PNL_PERCENT}%)</span>
         </div>
       </div>
 
       {/* Snapshot Finansial & Tugas Hari Ini */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
         {/* Snapshot Finansial */}
-        <div className="glass-panel p-5 rounded-2xl flex flex-col gap-4">
-          <h3 className="text-sm font-semibold text-text-primary">Snapshot Finansial</h3>
-          <div className="flex flex-col gap-3">
-            <div className="p-3 rounded-xl bg-white/5 border border-white/5">
-              <p className="text-xs text-text-muted">Total Saldo (Sheet)</p>
-              <p className="text-lg font-bold text-text-primary">{formatCurrency(MOCK_FINANCE.saldo, currency)}</p>
+        <div className="brutalist-card p-6 flex flex-col gap-5 bg-white">
+          <h3 className="text-lg font-black uppercase text-black border-b-2 border-black pb-2">Snapshot Finansial</h3>
+          <div className="flex flex-col gap-4">
+            <div className="p-4 border-2 border-black bg-bg-secondary shadow-[2px_2px_0px_#000]">
+              <p className="text-xs font-bold uppercase text-text-muted mb-1">Total Saldo (Sheet)</p>
+              <p className="text-2xl font-black text-black">{formatCurrency(MOCK_FINANCE.saldo, currency)}</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-xl bg-white/5 border border-white/5">
-                <div className="flex items-center gap-1 mb-1">
-                  <div className="w-4 h-4 rounded bg-accent-emerald/20 flex items-center justify-center">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
-                  </div>
-                  <p className="text-[10px] text-text-muted">Pemasukan</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-3 border-2 border-black bg-accent-emerald/20 shadow-[2px_2px_0px_#000]">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <ArrowUpRight className="w-4 h-4 text-accent-emerald" />
+                  <p className="text-xs font-bold uppercase text-black">Pemasukan</p>
                 </div>
-                <p className="text-sm font-semibold text-accent-emerald">+{formatCurrency(MOCK_FINANCE.income, currency)}</p>
+                <p className="text-base font-black text-black">+{formatCurrency(MOCK_FINANCE.income, currency)}</p>
               </div>
-              <div className="p-3 rounded-xl bg-white/5 border border-white/5">
-                <div className="flex items-center gap-1 mb-1">
-                  <div className="w-4 h-4 rounded bg-accent-rose/20 flex items-center justify-center">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#F43F5E" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12l7 7 7-7" /></svg>
-                  </div>
-                  <p className="text-[10px] text-text-muted">Pengeluaran</p>
+              <div className="p-3 border-2 border-black bg-accent-rose/20 shadow-[2px_2px_0px_#000]">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <ArrowDownRight className="w-4 h-4 text-accent-rose" />
+                  <p className="text-xs font-bold uppercase text-black">Pengeluaran</p>
                 </div>
-                <p className="text-sm font-semibold text-accent-rose">-{formatCurrency(MOCK_FINANCE.expense, currency)}</p>
+                <p className="text-base font-black text-black">-{formatCurrency(MOCK_FINANCE.expense, currency)}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Tugas & Deadline Hari Ini */}
-        <div className="glass-panel p-5 rounded-2xl flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-text-primary">Tugas & Deadline Hari Ini</h3>
-            <Link href="/deadlines" className="text-xs text-accent-emerald hover:underline">Lihat Kalender</Link>
+        <div className="brutalist-card p-6 flex flex-col gap-5 bg-white">
+          <div className="flex items-center justify-between border-b-2 border-black pb-2">
+            <h3 className="text-lg font-black uppercase text-black">Tugas Hari Ini</h3>
+            <Link href="/deadlines" className="text-xs font-bold uppercase text-black hover:underline">Lihat Kalender</Link>
           </div>
-          <div className="flex flex-col gap-2 flex-1">
+          <div className="flex flex-col gap-3 flex-1">
             {MOCK_DEADLINES.map(d => (
-              <div key={d.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
+              <div key={d.id} className="flex items-center justify-between p-3 border-2 border-black bg-bg-secondary shadow-[2px_2px_0px_#000]">
                 <div className="flex items-center gap-3">
-                  <div className={`w-1.5 h-1.5 rounded-full ${d.type === 'TGE' ? 'bg-accent-emerald' : 'bg-accent-blue'}`} />
-                  <span className="text-sm font-medium text-text-primary">{d.title}</span>
+                  <div className={`w-3 h-3 border-2 border-black ${d.type === 'TGE' ? 'bg-accent-emerald' : 'bg-blue-400'}`} />
+                  <span className="text-sm font-bold text-black">{d.title}</span>
                 </div>
-                <span className="text-xs text-text-muted px-2 py-0.5 rounded bg-white/5">{d.time}</span>
+                <span className="text-xs font-bold uppercase text-black border-2 border-black px-2 py-1 bg-white">{d.time}</span>
               </div>
             ))}
             {MOCK_DEADLINES.length === 0 && (
-              <div className="flex-1 flex items-center justify-center text-text-muted text-sm">
-                Tidak ada tugas hari ini.
+              <div className="flex-1 flex items-center justify-center font-bold text-black border-2 border-dashed border-black p-4">
+                TIDAK ADA TUGAS HARI INI
               </div>
             )}
           </div>
@@ -145,7 +137,7 @@ export default function DashboardPage() {
       <HabitHeatmap data={MOCK_HABIT_DATA} />
 
       {/* Bottom spacer for mobile nav */}
-      <div className="h-4" />
+      <div className="h-8" />
     </div>
   );
 }

@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { Sparkles, Loader2, Check, RefreshCw, Trash2, Edit2, AlertTriangle, PlayCircle } from 'lucide-react';
 
-// ─── Mock Parsed Data ──────────────────────────────────
-// TODO: Replace with real Gemini AI parsing results
+// ─── Types ──────────────────────────────────
 
 interface ParsedRow {
   id: string;
@@ -16,13 +16,6 @@ interface ParsedRow {
   source: string;
 }
 
-const MOCK_PARSED: ParsedRow[] = [
-  { id: '1', date: '2026-07-01', type: 'buy', asset: 'BTC', quantity: 0.01, price: 1_015_000_000, total: 10_150_000, source: 'Indodax' },
-  { id: '2', date: '2026-07-02', type: 'buy', asset: 'ETH', quantity: 2, price: 57_400_000, total: 114_800_000, source: 'Binance' },
-  { id: '3', date: '2026-07-03', type: 'sell', asset: 'SOL', quantity: 10, price: 2_850_000, total: 28_500_000, source: 'Tokocrypto' },
-  { id: '4', date: '2026-07-05', type: 'buy', asset: 'ADA', quantity: 5000, price: 12_500, total: 62_500_000, source: 'Indodax' },
-];
-
 const SAMPLE_TEXT = `Beli 0.01 BTC harga 1.015.000.000 di Indodax tanggal 1 Juli 2026
 Beli 2 ETH harga 57.400.000 di Binance tanggal 2 Juli 2026
 Jual 10 SOL harga 2.850.000 di Tokocrypto tanggal 3 Juli 2026
@@ -30,6 +23,16 @@ Beli 5000 ADA harga 12.500 di Indodax tanggal 5 Juli 2026`;
 
 function formatCurrency(amount: number) {
   return 'Rp ' + amount.toLocaleString('id-ID');
+}
+
+function CexBadge({ source }: { source: string }) {
+  const name = source.toLowerCase();
+  if (name.includes('binance')) return <span className="bg-[#F3BA2F] text-black px-2 py-1 text-[10px] font-black uppercase border-2 border-black tracking-tighter">BINANCE</span>;
+  if (name.includes('tokocrypto')) return <span className="bg-[#1E88E5] text-white px-2 py-1 text-[10px] font-black uppercase border-2 border-black tracking-tighter">TOKO</span>;
+  if (name.includes('indodax')) return <span className="bg-[#0A2640] text-white px-2 py-1 text-[10px] font-black uppercase border-2 border-black tracking-tighter">INDODAX</span>;
+  if (name.includes('bybit')) return <span className="bg-[#FFB11A] text-black px-2 py-1 text-[10px] font-black uppercase border-2 border-black tracking-tighter">BYBIT</span>;
+  if (name.includes('okx')) return <span className="bg-black text-white px-2 py-1 text-[10px] font-black uppercase border-2 border-white tracking-tighter">OKX</span>;
+  return <span className="bg-gray-300 text-black px-2 py-1 text-[10px] font-black uppercase border-2 border-black tracking-tighter">{source}</span>;
 }
 
 // ─── Smart Import Page ─────────────────────────────────
@@ -48,12 +51,25 @@ export default function SmartImportPage() {
     setParsed([]);
     setCommitted(false);
 
-    // Simulate AI parsing delay
-    // TODO: Replace with real Gemini API call via /api/smart-import
-    await new Promise((r) => setTimeout(r, 2000));
-
-    setParsed(MOCK_PARSED);
-    setParsing(false);
+    try {
+      const res = await fetch('/api/ai/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        // Ensure unique IDs
+        const dataWithIds = json.data.map((r: any, idx: number) => ({ ...r, id: r.id || `ai-${idx}` }));
+        setParsed(dataWithIds);
+      } else {
+        alert(json.error || 'Gagal memproses data');
+      }
+    } catch (e) {
+      alert('Terjadi kesalahan saat menghubungi server AI');
+    } finally {
+      setParsing(false);
+    }
   };
 
   const handleDelete = (id: string) => {
@@ -61,7 +77,7 @@ export default function SmartImportPage() {
   };
 
   const handleCommit = async () => {
-    // TODO: Save parsed transactions to Dexie DB / API
+    // TODO: Save parsed transactions to DB
     setCommitted(true);
   };
 
@@ -70,41 +86,40 @@ export default function SmartImportPage() {
   };
 
   return (
-    <div className="px-4 md:px-8 py-6 md:py-8 max-w-3xl mx-auto space-y-5">
+    <div className="max-w-3xl mx-auto space-y-6 font-sans">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-text-primary flex items-center gap-2">
-          <span className="text-2xl">✨</span> Smart Import
+        <h1 className="text-3xl font-black text-black flex items-center gap-3 uppercase tracking-tight">
+          <Sparkles className="w-8 h-8 text-black" fill="#facc15" /> SMART IMPORT
         </h1>
-        <p className="text-text-muted text-sm mt-1">
+        <p className="text-black font-bold uppercase text-sm mt-1 border-b-2 border-black inline-block pb-1">
           Tempel teks transaksi, biar AI yang parsing otomatis
         </p>
       </div>
 
-      {/* Disclaimer — NFR-09 */}
-      <div className="glass-card-static p-4 border-l-4 border-accent-amber">
+      {/* Disclaimer */}
+      <div className="brutalist-card-static p-4 bg-accent-amber border-2 border-black shadow-[4px_4px_0px_#000]">
         <div className="flex items-start gap-3">
-          <span className="text-lg shrink-0">⚠️</span>
+          <AlertTriangle className="w-6 h-6 text-black shrink-0" />
           <div>
-            <p className="text-sm font-medium text-accent-amber">Perhatian Privasi</p>
-            <p className="text-xs text-text-muted mt-1">
-              Fitur ini mengirim teks ke Google Gemini API (free tier) untuk parsing.
-              Jangan masukkan data sensitif seperti password atau private key.
-              Data transaksi akan diproses oleh pihak ketiga sesuai kebijakan privasi Google.
+            <p className="text-sm font-black text-black uppercase">Perhatian Privasi</p>
+            <p className="text-xs font-bold text-black mt-1">
+              FITUR INI MENGIRIM TEKS KE GOOGLE GEMINI API.
+              JANGAN MASUKKAN DATA SENSITIF SEPERTI PASSWORD ATAU PRIVATE KEY.
             </p>
           </div>
         </div>
       </div>
 
       {/* Text Input Area */}
-      <div className="glass-card-static p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <label className="text-sm font-semibold text-text-primary">Teks Transaksi</label>
+      <div className="brutalist-card-static p-5 bg-white border-2 border-black shadow-[4px_4px_0px_#000]">
+        <div className="flex items-center justify-between mb-4 border-b-2 border-black pb-2">
+          <label className="text-base font-black uppercase text-black">Teks Transaksi</label>
           <button
             onClick={loadSample}
-            className="text-xs text-accent-emerald hover:underline"
+            className="text-xs font-black uppercase text-black bg-accent-teal px-3 py-1 border-2 border-black shadow-[2px_2px_0px_#000] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0px_#000] active:translate-x-0 active:translate-y-0 active:shadow-[1px_1px_0px_#000] transition-all"
           >
-            Muat contoh
+            MUAT CONTOH
           </button>
         </div>
 
@@ -113,33 +128,23 @@ export default function SmartImportPage() {
           onChange={(e) => setText(e.target.value)}
           placeholder="Tempel teks transaksi di sini...&#10;&#10;Contoh:&#10;Beli 0.01 BTC harga 1.015.000.000 di Indodax tanggal 1 Juli 2026&#10;Jual 10 SOL harga 2.850.000 di Tokocrypto tanggal 3 Juli 2026"
           rows={8}
-          className="w-full glass-input px-4 py-3 text-sm text-text-primary placeholder:text-text-muted resize-none leading-relaxed"
+          className="w-full brutalist-input px-4 py-3 text-sm font-bold placeholder:text-text-muted resize-none leading-relaxed focus:bg-yellow-50"
         />
 
         <button
           onClick={handleParse}
           disabled={parsing || !text.trim()}
-          className="w-full py-3.5 rounded-xl font-semibold text-white transition-all duration-300
-            gradient-emerald hover:shadow-lg hover:shadow-accent-emerald/25
-            disabled:opacity-40 disabled:cursor-not-allowed
-            active:scale-[0.98]"
+          className="w-full mt-4 py-4 border-2 border-black bg-accent-emerald text-black font-black uppercase tracking-widest shadow-[4px_4px_0px_#000] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_#000] active:translate-x-[0px] active:translate-y-[0px] active:shadow-[2px_2px_0px_#000] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {parsing ? (
             <span className="flex items-center justify-center gap-3">
-              <div className="relative w-5 h-5">
-                <div className="absolute inset-0 rounded-full border-2 border-white/30" />
-                <div className="absolute inset-0 rounded-full border-2 border-white border-t-transparent animate-spin" />
-              </div>
-              Memproses dengan AI...
+              <Loader2 className="w-5 h-5 animate-spin" />
+              MEMPROSES DENGAN AI...
             </span>
           ) : (
             <span className="flex items-center justify-center gap-2">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                <path d="M2 17l10 5 10-5" />
-                <path d="M2 12l10 5 10-5" />
-              </svg>
-              Parse dengan AI
+              <PlayCircle className="w-5 h-5 fill-black text-white" />
+              PARSE DENGAN AI
             </span>
           )}
         </button>
@@ -147,21 +152,14 @@ export default function SmartImportPage() {
 
       {/* Parsing Animation */}
       {parsing && (
-        <div className="glass-card-static p-8 text-center animate-fade-in">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-accent-emerald/10 mb-4 animate-pulse-glow">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round" className="animate-spin-slow">
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
-            </svg>
+        <div className="brutalist-card-static p-8 text-center bg-white border-2 border-black shadow-[4px_4px_0px_#000]">
+          <div className="inline-flex items-center justify-center w-16 h-16 border-4 border-black bg-accent-emerald mb-4 animate-bounce">
+            <Loader2 className="w-8 h-8 text-black animate-spin" />
           </div>
-          <p className="text-text-primary font-medium">Sedang menganalisis teks...</p>
-          <p className="text-text-muted text-xs mt-1">AI sedang membaca dan mengekstrak transaksi</p>
-
-          {/* Shimmer Rows */}
+          <p className="text-black font-black text-xl uppercase tracking-widest">ANALYZING...</p>
           <div className="mt-6 space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-12 rounded-xl animate-shimmer bg-white/5" style={{ animationDelay: `${i * 0.3}s` }} />
+              <div key={i} className="h-10 border-2 border-black bg-bg-secondary animate-pulse" style={{ animationDelay: `${i * 0.2}s` }} />
             ))}
           </div>
         </div>
@@ -169,61 +167,57 @@ export default function SmartImportPage() {
 
       {/* Parsed Results */}
       {parsed.length > 0 && !committed && (
-        <div className="glass-card-static p-5 animate-fade-in-up space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-text-primary">
-              Hasil Parsing ({parsed.length} transaksi)
+        <div className="brutalist-card-static p-6 bg-white border-2 border-black shadow-[4px_4px_0px_#000] space-y-6">
+          <div className="flex items-center justify-between border-b-2 border-black pb-2">
+            <h3 className="text-xl font-black uppercase text-black">
+              HASIL PARSING ({parsed.length})
             </h3>
-            <span className="text-[10px] text-accent-emerald font-medium px-2 py-1 rounded-full bg-accent-emerald/15">
-              ✓ Berhasil
+            <span className="text-xs font-black uppercase text-black px-3 py-1 border-2 border-black bg-accent-emerald shadow-[2px_2px_0px_#000]">
+              BERHASIL
             </span>
           </div>
 
-          {/* Table — Mobile: cards, Desktop: table */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-text-muted text-xs border-b border-border">
-                  <th className="pb-2 text-left font-medium">Tanggal</th>
-                  <th className="pb-2 text-left font-medium">Tipe</th>
-                  <th className="pb-2 text-left font-medium">Aset</th>
-                  <th className="pb-2 text-right font-medium">Jumlah</th>
-                  <th className="pb-2 text-right font-medium">Harga</th>
-                  <th className="pb-2 text-right font-medium">Total</th>
-                  <th className="pb-2 text-left font-medium">Sumber</th>
-                  <th className="pb-2 text-right font-medium">Aksi</th>
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-x-auto border-2 border-black shadow-[4px_4px_0px_#000]">
+            <table className="w-full text-sm font-bold bg-white">
+              <thead className="bg-bg-secondary border-b-2 border-black">
+                <tr className="uppercase tracking-tighter">
+                  <th className="p-3 text-left border-r-2 border-black">Tanggal</th>
+                  <th className="p-3 text-left border-r-2 border-black">Tipe</th>
+                  <th className="p-3 text-left border-r-2 border-black">Aset</th>
+                  <th className="p-3 text-right border-r-2 border-black">Jumlah</th>
+                  <th className="p-3 text-right border-r-2 border-black">Harga</th>
+                  <th className="p-3 text-right border-r-2 border-black">Total</th>
+                  <th className="p-3 text-left border-r-2 border-black">Sumber</th>
+                  <th className="p-3 text-right">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y-2 divide-black">
                 {parsed.map((row) => (
-                  <tr key={row.id} className="hover:bg-white/[0.02]">
-                    <td className="py-3 text-text-secondary">{row.date}</td>
-                    <td className="py-3">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full
-                        ${row.type === 'buy' ? 'bg-accent-emerald/15 text-accent-emerald' :
-                          row.type === 'sell' ? 'bg-accent-rose/15 text-accent-rose' :
-                          'bg-accent-amber/15 text-accent-amber'}`}>
-                        {row.type === 'buy' ? 'Beli' : row.type === 'sell' ? 'Jual' : 'Transfer'}
+                  <tr key={row.id} className="hover:bg-yellow-50">
+                    <td className="p-3 border-r-2 border-black">{row.date}</td>
+                    <td className="p-3 border-r-2 border-black">
+                      <span className={`text-xs font-black uppercase px-2 py-1 border-2 border-black inline-block
+                        ${row.type === 'buy' ? 'bg-accent-emerald text-black' :
+                          row.type === 'sell' ? 'bg-accent-rose text-white' :
+                          'bg-accent-amber text-black'}`}>
+                        {row.type === 'buy' ? 'BELI' : row.type === 'sell' ? 'JUAL' : 'TF'}
                       </span>
                     </td>
-                    <td className="py-3 font-medium text-text-primary">{row.asset}</td>
-                    <td className="py-3 text-right text-text-secondary">{row.quantity}</td>
-                    <td className="py-3 text-right text-text-secondary">{formatCurrency(row.price)}</td>
-                    <td className="py-3 text-right font-medium text-text-primary">{formatCurrency(row.total)}</td>
-                    <td className="py-3 text-text-secondary">{row.source}</td>
-                    <td className="py-3 text-right">
+                    <td className="p-3 text-lg font-black border-r-2 border-black">{row.asset}</td>
+                    <td className="p-3 text-right border-r-2 border-black">{row.quantity}</td>
+                    <td className="p-3 text-right border-r-2 border-black">{formatCurrency(row.price)}</td>
+                    <td className="p-3 text-right font-black border-r-2 border-black">{formatCurrency(row.total)}</td>
+                    <td className="p-3 border-r-2 border-black">
+                      <CexBadge source={row.source} />
+                    </td>
+                    <td className="p-3 text-right">
                       <div className="flex gap-2 justify-end">
-                        <button
-                          onClick={() => setEditId(editId === row.id ? null : row.id)}
-                          className="text-text-muted hover:text-accent-emerald transition-colors text-xs"
-                        >
-                          ✏️
+                        <button onClick={() => setEditId(editId === row.id ? null : row.id)} className="p-2 border-2 border-black bg-bg-secondary hover:bg-accent-teal hover:shadow-[2px_2px_0px_#000] active:shadow-none transition-all">
+                          <Edit2 className="w-4 h-4 text-black" />
                         </button>
-                        <button
-                          onClick={() => handleDelete(row.id)}
-                          className="text-text-muted hover:text-accent-rose transition-colors text-xs"
-                        >
-                          🗑️
+                        <button onClick={() => handleDelete(row.id)} className="p-2 border-2 border-black bg-bg-secondary hover:bg-accent-rose hover:text-white hover:shadow-[2px_2px_0px_#000] active:shadow-none transition-all">
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -234,32 +228,33 @@ export default function SmartImportPage() {
           </div>
 
           {/* Mobile Card View */}
-          <div className="md:hidden space-y-3">
+          <div className="md:hidden space-y-4">
             {parsed.map((row) => (
-              <div key={row.id} className="p-3 rounded-xl bg-white/[0.03] border border-border">
-                <div className="flex items-center justify-between mb-2">
+              <div key={row.id} className="p-4 bg-white border-2 border-black shadow-[4px_4px_0px_#000]">
+                <div className="flex items-center justify-between mb-3 border-b-2 border-black pb-2">
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full
-                      ${row.type === 'buy' ? 'bg-accent-emerald/15 text-accent-emerald' :
-                        row.type === 'sell' ? 'bg-accent-rose/15 text-accent-rose' :
-                        'bg-accent-amber/15 text-accent-amber'}`}>
+                    <span className={`text-xs font-black uppercase px-2 py-1 border-2 border-black inline-block
+                      ${row.type === 'buy' ? 'bg-accent-emerald text-black' :
+                        row.type === 'sell' ? 'bg-accent-rose text-white' :
+                        'bg-accent-amber text-black'}`}>
                       {row.type === 'buy' ? 'Beli' : row.type === 'sell' ? 'Jual' : 'Transfer'}
                     </span>
-                    <span className="text-sm font-semibold text-text-primary">{row.asset}</span>
+                    <span className="text-xl font-black text-black uppercase">{row.asset}</span>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => setEditId(editId === row.id ? null : row.id)} className="text-xs text-text-muted hover:text-accent-emerald">✏️</button>
-                    <button onClick={() => handleDelete(row.id)} className="text-xs text-text-muted hover:text-accent-rose">🗑️</button>
+                    <button onClick={() => setEditId(editId === row.id ? null : row.id)} className="p-1.5 border-2 border-black bg-bg-secondary active:bg-accent-teal"><Edit2 className="w-4 h-4 text-black" /></button>
+                    <button onClick={() => handleDelete(row.id)} className="p-1.5 border-2 border-black bg-bg-secondary active:bg-accent-rose"><Trash2 className="w-4 h-4 text-black" /></button>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-1 text-xs">
-                  <p className="text-text-muted">Tanggal: <span className="text-text-secondary">{row.date}</span></p>
-                  <p className="text-text-muted">Jumlah: <span className="text-text-secondary">{row.quantity}</span></p>
-                  <p className="text-text-muted">Harga: <span className="text-text-secondary">{formatCurrency(row.price)}</span></p>
-                  <p className="text-text-muted">Total: <span className="text-text-primary font-medium">{formatCurrency(row.total)}</span></p>
-                  <p className="text-text-muted col-span-2">Sumber: <span className="text-text-secondary">{row.source}</span></p>
+                <div className="grid grid-cols-2 gap-2 text-sm font-bold">
+                  <p className="text-text-secondary">Tanggal: <span className="text-black uppercase">{row.date}</span></p>
+                  <p className="text-text-secondary">Jumlah: <span className="text-black">{row.quantity}</span></p>
+                  <p className="text-text-secondary">Harga: <span className="text-black">{formatCurrency(row.price)}</span></p>
+                  <p className="text-text-secondary">Total: <span className="text-black font-black text-base">{formatCurrency(row.total)}</span></p>
+                  <div className="col-span-2 pt-2 border-t-2 border-dashed border-black">
+                    <span className="text-text-secondary mr-2">Sumber:</span> <CexBadge source={row.source} />
+                  </div>
                 </div>
-                {/* TODO: Inline edit form when editId === row.id */}
               </div>
             ))}
           </div>
@@ -267,15 +262,11 @@ export default function SmartImportPage() {
           {/* Commit Button */}
           <button
             onClick={handleCommit}
-            className="w-full py-3.5 rounded-xl font-semibold text-white transition-all duration-300
-              gradient-emerald hover:shadow-lg hover:shadow-accent-emerald/25
-              active:scale-[0.98]"
+            className="w-full mt-4 py-4 border-2 border-black bg-black text-white font-black uppercase tracking-widest shadow-[4px_4px_0px_#10B981] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_#10B981] active:translate-x-[0px] active:translate-y-[0px] active:shadow-[2px_2px_0px_#10B981] transition-all"
           >
             <span className="flex items-center justify-center gap-2">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M5 12l5 5L20 7" />
-              </svg>
-              Tambahkan Semua ({parsed.length} transaksi)
+              <Check className="w-5 h-5 text-accent-emerald" strokeWidth={3} />
+              TAMBAHKAN SEMUA ({parsed.length})
             </span>
           </button>
         </div>
@@ -283,15 +274,13 @@ export default function SmartImportPage() {
 
       {/* Success State */}
       {committed && (
-        <div className="glass-card-static p-8 text-center animate-fade-in-up">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-accent-emerald/15 mb-4">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M5 12l5 5L20 7" />
-            </svg>
+        <div className="brutalist-card-static p-8 text-center bg-white border-2 border-black shadow-[4px_4px_0px_#000]">
+          <div className="inline-flex items-center justify-center w-20 h-20 border-4 border-black bg-accent-emerald mb-4 shadow-[4px_4px_0px_#000] rotate-3">
+            <Check className="w-10 h-10 text-black" strokeWidth={3} />
           </div>
-          <p className="text-text-primary font-semibold text-lg">Berhasil! 🎉</p>
-          <p className="text-text-muted text-sm mt-1">
-            {parsed.length} transaksi berhasil ditambahkan
+          <p className="text-black font-black text-2xl uppercase tracking-tighter">BERHASIL!</p>
+          <p className="text-black font-bold uppercase mt-2">
+            {parsed.length} TRANSAKSI TELAH DITAMBAHKAN
           </p>
           <button
             onClick={() => {
@@ -299,10 +288,10 @@ export default function SmartImportPage() {
               setParsed([]);
               setCommitted(false);
             }}
-            className="mt-6 px-6 py-2.5 rounded-xl border border-border text-text-secondary text-sm font-medium
-              hover:bg-white/5 transition-all"
+            className="mt-8 px-8 py-3 border-2 border-black bg-accent-amber text-black font-black uppercase shadow-[4px_4px_0px_#000] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_#000] active:translate-x-[0px] active:translate-y-[0px] active:shadow-[2px_2px_0px_#000] transition-all flex items-center justify-center mx-auto gap-2"
           >
-            Import Lagi
+            <RefreshCw className="w-5 h-5" />
+            IMPORT LAGI
           </button>
         </div>
       )}

@@ -66,13 +66,13 @@ export default function WatchlistPage() {
 
       {/* Add Form (simple placeholder) */}
       {showAdd && (
-        <div className="glass-card p-4 mb-5 animate-fade-in">
+        <div className="brutalist-card p-4 mb-5 animate-fade-in">
           <p className="text-sm text-text-secondary mb-3">Tambah koin ke watchlist</p>
           <div className="flex gap-2">
             <input
               type="text"
               placeholder="Nama / simbol koin..."
-              className="flex-1 glass-input px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted"
+              className="flex-1 brutalist-input px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted"
             />
             <button className="px-4 py-2.5 rounded-xl gradient-emerald text-white text-sm font-medium hover:shadow-lg hover:shadow-accent-emerald/20 transition-all active:scale-95">
               Tambah
@@ -90,7 +90,7 @@ export default function WatchlistPage() {
           const isPositive24h = item.change24h >= 0;
 
           return (
-            <div key={item.id} className="glass-card p-4 group">
+            <div key={item.id} className="brutalist-card p-4 group">
               <div className="flex items-center gap-3">
                 {/* Icon */}
                 <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-lg font-bold shrink-0">

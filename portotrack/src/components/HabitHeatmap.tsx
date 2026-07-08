@@ -7,7 +7,7 @@ interface HabitHeatmapProps {
 export default function HabitHeatmap({ data }: HabitHeatmapProps) {
   // Generate last 90 days for the heatmap
   const today = new Date();
-  const days: { date: Date, dateStr: string, val: number }[] = [];
+  const days: string[] = [];
   
   for (let i = 89; i >= 0; i--) {
     const d = new Date(today);
@@ -19,30 +19,30 @@ export default function HabitHeatmap({ data }: HabitHeatmapProps) {
   const dataMap = new Map(data.map(item => [item.date, item.value]));
 
   const getColorClass = (value: number | undefined) => {
-    if (!value) return 'bg-white/5 border border-white/5';
-    if (value === 1) return 'bg-accent-emerald/30 border border-accent-emerald/40';
-    if (value === 2) return 'bg-accent-emerald/60 border border-accent-emerald/70';
-    return 'bg-accent-emerald border border-accent-emerald/80 shadow-[0_0_8px_rgba(52,211,153,0.4)]';
+    if (!value) return 'bg-bg-secondary border-black';
+    if (value === 1) return 'bg-accent-emerald/40 border-black';
+    if (value === 2) return 'bg-accent-emerald/70 border-black';
+    return 'bg-accent-emerald border-black';
   };
 
   return (
-    <div className="glass-panel p-5 rounded-2xl flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-text-primary">Aktivitas Habit</h3>
-        <span className="text-xs text-text-muted">90 Hari Terakhir</span>
+    <div className="brutalist-card p-6 flex flex-col gap-5 bg-white">
+      <div className="flex items-center justify-between border-b-2 border-black pb-2">
+        <h3 className="text-lg font-black uppercase text-black">Aktivitas Habit</h3>
+        <span className="text-xs font-bold uppercase text-black border-2 border-black px-2 py-1 bg-accent-amber">90 Hari Terakhir</span>
       </div>
       
-      <div className="flex gap-[3px] overflow-hidden">
+      <div className="flex gap-1 overflow-hidden p-2 border-2 border-black bg-bg-secondary shadow-[inset_2px_2px_0px_#000]">
         {/* Divide into weeks */}
         {Array.from({ length: Math.ceil(days.length / 7) }).map((_, colIndex) => (
-          <div key={colIndex} className="flex flex-col gap-[3px]">
+          <div key={colIndex} className="flex flex-col gap-1">
             {days.slice(colIndex * 7, (colIndex + 1) * 7).map((dateStr) => {
               const value = dataMap.get(dateStr);
               return (
                 <div
                   key={dateStr}
                   title={`${dateStr}: ${value || 0} aktivitas`}
-                  className={`w-3 h-3 rounded-[2px] transition-colors duration-200 ${getColorClass(value)} hover:ring-1 hover:ring-white/40 cursor-pointer`}
+                  className={`w-3.5 h-3.5 border-2 transition-transform duration-200 ${getColorClass(value)} hover:scale-125 cursor-pointer z-10 hover:z-20`}
                 />
               );
             })}
@@ -50,13 +50,13 @@ export default function HabitHeatmap({ data }: HabitHeatmapProps) {
         ))}
       </div>
       
-      <div className="flex items-center justify-end gap-2 text-[10px] text-text-muted mt-1">
+      <div className="flex items-center justify-end gap-2 text-xs font-bold uppercase text-black mt-2">
         <span>Sedikit</span>
-        <div className="flex gap-[3px]">
-          <div className="w-2.5 h-2.5 rounded-[2px] bg-white/5 border border-white/5" />
-          <div className="w-2.5 h-2.5 rounded-[2px] bg-accent-emerald/30 border border-accent-emerald/40" />
-          <div className="w-2.5 h-2.5 rounded-[2px] bg-accent-emerald/60 border border-accent-emerald/70" />
-          <div className="w-2.5 h-2.5 rounded-[2px] bg-accent-emerald border border-accent-emerald/80" />
+        <div className="flex gap-1">
+          <div className="w-3.5 h-3.5 border-2 border-black bg-bg-secondary" />
+          <div className="w-3.5 h-3.5 border-2 border-black bg-accent-emerald/40" />
+          <div className="w-3.5 h-3.5 border-2 border-black bg-accent-emerald/70" />
+          <div className="w-3.5 h-3.5 border-2 border-black bg-accent-emerald" />
         </div>
         <span>Banyak</span>
       </div>

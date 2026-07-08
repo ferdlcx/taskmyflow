@@ -84,14 +84,14 @@ export default function HoldingsPage() {
             placeholder="Cari aset..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 glass-input text-sm text-text-primary placeholder:text-text-muted"
+            className="w-full pl-10 pr-4 py-2.5 brutalist-input text-sm text-text-primary placeholder:text-text-muted"
           />
         </div>
 
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as SortKey)}
-          className="glass-input px-3 py-2.5 text-sm text-text-primary bg-bg-card appearance-none cursor-pointer pr-8"
+          className="brutalist-input px-3 py-2.5 text-sm text-text-primary bg-bg-card appearance-none cursor-pointer pr-8"
           style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
         >
           <option value="value">Nilai</option>
@@ -110,7 +110,7 @@ export default function HoldingsPage() {
             <div key={h.id}>
               <button
                 onClick={() => setSelectedId(isSelected ? null : h.id)}
-                className="w-full glass-card p-4 text-left"
+                className="w-full brutalist-card p-4 text-left"
               >
                 <div className="flex items-center gap-3">
                   {/* Icon */}
@@ -141,7 +141,7 @@ export default function HoldingsPage() {
 
               {/* Detail Panel */}
               {isSelected && (
-                <div className="mt-1 glass-card-static p-4 rounded-xl animate-fade-in space-y-3">
+                <div className="mt-1 brutalist-card-static p-4 rounded-xl animate-fade-in space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <p className="text-[11px] text-text-muted">Harga Saat Ini</p>

@@ -198,10 +198,11 @@ export type SyncableTable =
   | 'sources'
   | 'transactions'
   | 'watchlist'
-  | 'fiat_holdings';
+  | 'fiat_holdings'
+  | 'projects';
 
 /** Record dari salah satu tabel yang bisa disinkronisasi */
-export type SyncableRecord = Source | Transaction | WatchlistItem | FiatHolding;
+export type SyncableRecord = Source | Transaction | WatchlistItem | FiatHolding | Project;
 
 /** Payload untuk membuat entitas baru (tanpa field auto-generated) */
 export type CreatePayload<T> = Omit<
@@ -276,4 +277,22 @@ export interface FinanceSummary {
   income_month: number;
   expense_month: number;
   last_synced: string;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3 Types
+// ---------------------------------------------------------------------------
+
+export interface Project {
+  id: string;
+  user_id: string;
+  platform: string;
+  estimated_reward: string;
+  target_date: string;
+  description: string;
+  status: 'active' | 'completed';
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  sync_status: SyncStatus;
 }

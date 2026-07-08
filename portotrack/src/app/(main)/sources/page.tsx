@@ -65,14 +65,14 @@ export default function SourcesPage() {
 
       {/* Add / Edit Form */}
       {showAdd && (
-        <div className="glass-card p-5 mb-5 animate-fade-in space-y-4">
+        <div className="brutalist-card p-5 mb-5 animate-fade-in space-y-4">
           <h3 className="text-sm font-semibold text-text-primary">Tambah Sumber Baru</h3>
 
           <div className="space-y-3">
             <input
               type="text"
               placeholder="Nama sumber (cth: Binance, MetaMask)"
-              className="w-full glass-input px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted"
+              className="w-full brutalist-input px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted"
             />
 
             <div className="flex gap-2">
@@ -110,7 +110,7 @@ export default function SourcesPage() {
           const isEditing = editId === source.id;
 
           return (
-            <div key={source.id} className="glass-card p-4">
+            <div key={source.id} className="brutalist-card p-4">
               <div className="flex items-center gap-3">
                 {/* Icon */}
                 <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-2xl shrink-0">
@@ -159,7 +159,7 @@ export default function SourcesPage() {
                   <input
                     type="text"
                     defaultValue={source.name}
-                    className="w-full glass-input px-3 py-2 text-sm text-text-primary"
+                    className="w-full brutalist-input px-3 py-2 text-sm text-text-primary"
                   />
                   <div className="flex gap-2">
                     <button className="px-4 py-2 rounded-lg gradient-emerald text-white text-sm font-medium active:scale-95 transition-all">

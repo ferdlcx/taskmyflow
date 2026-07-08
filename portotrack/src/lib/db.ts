@@ -21,6 +21,7 @@ import type {
   PriceCache,
   Deadline,
   HabitEntry,
+  Project,
 } from './types';
 
 /**
@@ -36,6 +37,7 @@ class PortoTrackDB extends Dexie {
   price_cache!: EntityTable<PriceCache, 'coingecko_id'>;
   deadlines!: EntityTable<Deadline, 'id'>;
   habits!: Table<HabitEntry>;
+  projects!: EntityTable<Project, 'id'>;
 
   constructor() {
     super('portotrack-db');
@@ -110,10 +112,22 @@ class PortoTrackDB extends Dexie {
         'updated_at'
       ].join(', '),
 
-      // --- Tabel lokal (tidak disinkronisasi) ---
-      price_cache: [
-        '&coingecko_id',
-        'fetched_at',
+        // --- Tabel lokal (tidak disinkronisasi) ---
+        price_cache: [
+          '&coingecko_id',
+          'fetched_at',
+        ].join(', '),
+      });
+      
+    this.version(3).stores({
+      projects: [
+        '&id',
+        'user_id',
+        'platform',
+        'status',
+        'sync_status',
+        'updated_at',
+        'deleted_at'
       ].join(', '),
     });
   }
@@ -132,7 +146,7 @@ export const db = new PortoTrackDB();
  * @returns Array record yang sync_status = 'pending'
  */
 export async function getPendingRecords<T>(
-  table: 'sources' | 'transactions' | 'watchlist' | 'fiat_holdings'
+  table: 'sources' | 'transactions' | 'watchlist' | 'fiat_holdings' | 'projects'
 ): Promise<T[]> {
   return (await db.table(table).where('sync_status').equals('pending').toArray()) as T[];
 }
@@ -143,7 +157,7 @@ export async function getPendingRecords<T>(
  * @returns Array record yang deleted_at = null
  */
 export async function getActiveRecords<T>(
-  table: 'sources' | 'transactions' | 'watchlist' | 'fiat_holdings'
+  table: 'sources' | 'transactions' | 'watchlist' | 'fiat_holdings' | 'projects'
 ): Promise<T[]> {
   return (await db
     .table(table)
@@ -157,7 +171,7 @@ export async function getActiveRecords<T>(
  * @param id - ID record
  */
 export async function markSynced(
-  table: 'sources' | 'transactions' | 'watchlist' | 'fiat_holdings',
+  table: 'sources' | 'transactions' | 'watchlist' | 'fiat_holdings' | 'projects',
   id: string
 ): Promise<void> {
   await db.table(table).update(id, { sync_status: 'synced' as const });
@@ -169,7 +183,7 @@ export async function markSynced(
  * @param id - ID record
  */
 export async function markSyncError(
-  table: 'sources' | 'transactions' | 'watchlist' | 'fiat_holdings',
+  table: 'sources' | 'transactions' | 'watchlist' | 'fiat_holdings' | 'projects',
   id: string
 ): Promise<void> {
   await db.table(table).update(id, { sync_status: 'error' as const });

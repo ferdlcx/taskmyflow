@@ -30,7 +30,7 @@ export default function SettingsPage() {
       </div>
 
       {/* ── Display Currency ─────────────────────── */}
-      <div className="glass-card-static p-5 space-y-4">
+      <div className="brutalist-card-static p-5 space-y-4">
         <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
           💱 Mata Uang Tampilan
         </h3>
@@ -53,7 +53,7 @@ export default function SettingsPage() {
       </div>
 
       {/* ── Kurs Setting ─────────────────────────── */}
-      <div className="glass-card-static p-5 space-y-3">
+      <div className="brutalist-card-static p-5 space-y-3">
         <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
           📊 Kurs USD/IDR
         </h3>
@@ -67,14 +67,14 @@ export default function SettingsPage() {
             inputMode="numeric"
             value={kurs}
             onChange={(e) => setKurs(e.target.value.replace(/\D/g, ''))}
-            className="w-full pl-10 pr-4 py-2.5 glass-input text-sm text-text-primary"
+            className="w-full pl-10 pr-4 py-2.5 brutalist-input text-sm text-text-primary"
           />
         </div>
         {/* TODO: Auto-fetch kurs from API */}
       </div>
 
       {/* ── Telegram Notification ────────────────── */}
-      <div className="glass-card-static p-5">
+      <div className="brutalist-card-static p-5">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
@@ -102,12 +102,12 @@ export default function SettingsPage() {
             <input
               type="text"
               placeholder="Bot Token"
-              className="w-full glass-input px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted"
+              className="w-full brutalist-input px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted"
             />
             <input
               type="text"
               placeholder="Chat ID"
-              className="w-full glass-input px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted"
+              className="w-full brutalist-input px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted"
             />
             <button className="px-4 py-2 rounded-lg gradient-emerald text-white text-sm font-medium active:scale-95 transition-all">
               Test Kirim
@@ -118,7 +118,7 @@ export default function SettingsPage() {
       </div>
 
       {/* ── API Key Management ───────────────────── */}
-      <div className="glass-card-static p-5 space-y-3">
+      <div className="brutalist-card-static p-5 space-y-3">
         <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
           🔑 API Key (Gemini AI)
         </h3>
@@ -131,7 +131,7 @@ export default function SettingsPage() {
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder="Masukkan API Key..."
-            className="w-full pr-12 glass-input px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted font-mono"
+            className="w-full pr-12 brutalist-input px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted font-mono"
           />
           <button
             onClick={() => setShowApiKey(!showApiKey)}
@@ -151,7 +151,7 @@ export default function SettingsPage() {
       </div>
 
       {/* ── About ────────────────────────────────── */}
-      <div className="glass-card-static p-5 space-y-2">
+      <div className="brutalist-card-static p-5 space-y-2">
         <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
           ℹ️ Tentang
         </h3>
@@ -164,7 +164,7 @@ export default function SettingsPage() {
       </div>
 
       {/* ── Logout ───────────────────────────────── */}
-      <div className="glass-card-static p-5">
+      <div className="brutalist-card-static p-5">
         {!showLogoutConfirm ? (
           <button
             onClick={() => setShowLogoutConfirm(true)}
