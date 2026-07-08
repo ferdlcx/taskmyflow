@@ -4,12 +4,15 @@ import { createClient } from '@supabase/supabase-js';
 // Vercel Cron berjalan secara serverless.
 // Endpoint ini dipanggil setiap 10 menit oleh Vercel Scheduler.
 export async function GET(request: Request) {
-  // 1. Validasi Auth Cron dari Vercel
+  // 1. Validasi Auth Cron dari Vercel (bisa lewat Header Authorization ATAU Query Parameter ?secret=...)
+  const { searchParams } = new URL(request.url);
+  const urlSecret = searchParams.get('secret');
   const authHeader = request.headers.get('authorization');
-  if (
-    process.env.CRON_SECRET &&
-    authHeader !== `Bearer ${process.env.CRON_SECRET}`
-  ) {
+  
+  const hasValidHeader = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+  const hasValidQuery = urlSecret !== null && urlSecret === process.env.CRON_SECRET;
+
+  if (process.env.CRON_SECRET && !hasValidHeader && !hasValidQuery) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
