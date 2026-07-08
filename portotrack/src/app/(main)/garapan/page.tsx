@@ -1,11 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, CheckSquare, Square, TrendingUp, Edit2 } from 'lucide-react';
+import { Plus, Trash2, CheckSquare, Square, TrendingUp, Edit2, X } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
+import type { Project } from '@/lib/types';
 
+const parseReminderTime = (desc: string) => {
+  if (!desc) return '';
+  const match = desc.match(/^\[Reminder:\s*([0-9]{2}:[0-9]{2})\]/);
+  return match ? match[1] : '';
+};
 
+const parseNotes = (desc: string) => {
+  if (!desc) return '';
+  return desc.replace(/^\[Reminder:\s*[0-9]{2}:[0-9]{2}\]\s*/, '');
+};
 
 export default function GarapanPage() {
   const projects = useLiveQuery(() => db.projects.filter(p => !p.deleted_at).toArray()) || [];
@@ -51,6 +61,12 @@ export default function GarapanPage() {
   }, [projects]);
   
   const [showAdd, setShowAdd] = useState(false);
+  const [isDailyProject, setIsDailyProject] = useState(false);
+  
+  const [showEdit, setShowEdit] = useState(false);
+  const [editItem, setEditItem] = useState<Project | null>(null);
+  const [editIsDaily, setEditIsDaily] = useState(false);
+
   const [showTaskAdd, setShowTaskAdd] = useState(false);
   const [taskTitle, setTaskTitle] = useState('');
 
@@ -92,6 +108,15 @@ export default function GarapanPage() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const isDailyChecked = formData.get('is_daily') === 'on';
+    const reminderTime = formData.get('reminder_time') as string;
+    const notesText = formData.get('notes') as string;
+    const platformName = formData.get('platform') as string;
+    
+    // Notes gabungan dengan platform info
+    const fullNotes = platformName ? `[${platformName}] ${notesText}` : notesText;
+    const descriptionVal = isDailyChecked && reminderTime
+      ? `[Reminder: ${reminderTime}] ${fullNotes}`
+      : fullNotes;
 
     await db.projects.add({
       id: crypto.randomUUID(),
@@ -101,13 +126,42 @@ export default function GarapanPage() {
       estimated_reward: formData.get('reward') as string,
       status: 'active',
       is_daily: isDailyChecked ? 1 : 0,
-      description: `${formData.get('platform') || ''} - ${formData.get('notes') || ''}`,
+      description: descriptionVal,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       deleted_at: null,
       sync_status: 'pending'
     });
     setShowAdd(false);
+    setIsDailyProject(false);
+  };
+
+  const updateProject = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editItem) return;
+    const formData = new FormData(e.currentTarget);
+    const isDailyChecked = formData.get('is_daily') === 'on';
+    const reminderTime = formData.get('reminder_time') as string;
+    const notesText = formData.get('notes') as string;
+    const platformName = formData.get('platform') as string;
+
+    const fullNotes = platformName ? `[${platformName}] ${notesText}` : notesText;
+    const descriptionVal = isDailyChecked && reminderTime
+      ? `[Reminder: ${reminderTime}] ${fullNotes}`
+      : fullNotes;
+
+    await db.projects.update(editItem.id, {
+      platform: formData.get('title') as string,
+      target_date: formData.get('date') as string,
+      estimated_reward: formData.get('reward') as string,
+      is_daily: isDailyChecked ? 1 : 0,
+      description: descriptionVal,
+      status: formData.get('status') as 'active'|'completed',
+      updated_at: new Date().toISOString(),
+      sync_status: 'pending'
+    });
+    setShowEdit(false);
+    setEditItem(null);
   };
 
   return (
@@ -200,9 +254,24 @@ export default function GarapanPage() {
               <label className="block text-xs font-bold uppercase mb-1">Keterangan / Sumber</label>
               <input name="notes" type="text" placeholder="Catatan tambahan" className="brutalist-input w-full p-2 border-black" />
             </div>
-            <div className="flex items-center gap-2 pt-5">
-              <input name="is_daily" type="checkbox" id="is_daily_check" className="w-4 h-4 accent-black border-2 border-black" />
-              <label htmlFor="is_daily_check" className="text-xs font-black uppercase cursor-pointer select-none">Misi Harian (Daily Quest)?</label>
+            <div className="flex flex-col gap-2 pt-2">
+              <div className="flex items-center gap-2">
+                <input 
+                  name="is_daily" 
+                  type="checkbox" 
+                  id="is_daily_check" 
+                  checked={isDailyProject}
+                  onChange={(e) => setIsDailyProject(e.target.checked)}
+                  className="w-4 h-4 accent-black border-2 border-black" 
+                />
+                <label htmlFor="is_daily_check" className="text-xs font-black uppercase cursor-pointer select-none">Misi Harian (Daily Quest)?</label>
+              </div>
+              {isDailyProject && (
+                <div className="mt-2 animate-fade-in">
+                  <label className="block text-xs font-bold uppercase mb-1">Jam Reminder Bot (WIB)</label>
+                  <input name="reminder_time" type="time" defaultValue="08:00" className="brutalist-input w-full p-2 border-black" required />
+                </div>
+              )}
             </div>
           </div>
           <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-black">
@@ -213,40 +282,134 @@ export default function GarapanPage() {
       )}
 
       <div className="space-y-4">
-        {projects.map(p => (
-          <div key={p.id} className={`brutalist-card p-4 border-l-8 ${p.status === 'completed' ? 'border-l-black bg-gray-100 opacity-60' : 'border-l-accent-amber bg-white'} hover:-translate-y-1 transition-transform`}>
-            <div className="flex justify-between items-start flex-col md:flex-row gap-4 md:gap-0">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className={`text-lg font-black uppercase ${p.status === 'completed' ? 'line-through' : ''}`}>{p.platform}</h3>
-                  {p.is_daily === 1 && (
-                    <span className="text-[9px] font-black bg-accent-purple text-white px-1.5 py-0.5 border border-black uppercase">Daily</span>
+        {projects.map(p => {
+          const isDaily = p.is_daily === 1;
+          const todayTask = isDaily ? dailyTasks.find(t => t.project_id === p.id) : null;
+          const reminderTime = parseReminderTime(p.description);
+          const cleanNotes = parseNotes(p.description);
+
+          return (
+            <div key={p.id} className={`brutalist-card p-4 border-l-8 ${p.status === 'completed' ? 'border-l-black bg-gray-100 opacity-60' : 'border-l-accent-amber bg-white'} hover:-translate-y-1 transition-transform`}>
+              <div className="flex justify-between items-start flex-col md:flex-row gap-4 md:gap-0">
+                <div className="space-y-1 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className={`text-lg font-black uppercase ${p.status === 'completed' ? 'line-through' : ''}`}>{p.platform}</h3>
+                    {isDaily && (
+                      <span className="text-[9px] font-black bg-accent-purple text-white px-1.5 py-0.5 border border-black uppercase">Daily</span>
+                    )}
+                    {isDaily && reminderTime && (
+                      <span className="text-[9px] font-black bg-black text-white px-1.5 py-0.5 border border-black uppercase">⏰ {reminderTime} WIB</span>
+                    )}
+                  </div>
+                  {cleanNotes && (
+                    <p className="text-xs font-bold text-text-muted mt-0.5 uppercase">{cleanNotes}</p>
+                  )}
+                  <div className="flex items-center gap-4 text-xs font-bold text-text-muted mt-1 uppercase flex-wrap">
+                    <span>💰 Reward: {p.estimated_reward}</span>
+                    <span>📅 Date: {p.target_date}</span>
+                  </div>
+
+                  {/* Integrasi Daily Task Hari Ini ke Card */}
+                  {isDaily && todayTask && (
+                    <div className="mt-3 inline-block">
+                      <button 
+                        onClick={() => toggleDailyTask(todayTask.id, todayTask.is_completed)} 
+                        className={`flex items-center gap-2 px-3 py-1.5 border-2 border-black font-black uppercase text-xs transition-all shadow-[2px_2px_0px_#000] hover:translate-y-[1px] hover:translate-x-[1px] hover:shadow-none
+                          ${todayTask.is_completed ? 'bg-accent-emerald text-black' : 'bg-pink-100 text-black'}`}
+                      >
+                        {todayTask.is_completed ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                        <span>Misi Hari Ini: {todayTask.is_completed ? 'Selesai' : 'Belum Selesai'}</span>
+                      </button>
+                    </div>
                   )}
                 </div>
-                {p.description && (
-                  <p className="text-[10px] font-bold text-text-muted mt-0.5 lowercase">{p.description}</p>
-                )}
-                <div className="flex items-center gap-4 text-xs font-bold text-text-muted mt-1 uppercase">
-                  <span>💰 Reward: {p.estimated_reward}</span>
-                  <span>📅 Date: {p.target_date}</span>
+              
+                <div className="flex items-center gap-2 shrink-0 md:self-center">
+                  <button 
+                    onClick={() => { setEditItem(p); setEditIsDaily(p.is_daily === 1); setShowEdit(true); }}
+                    className="p-2 bg-accent-amber border border-black shadow-[1px_1px_0px_#000] hover:translate-y-[1px] hover:shadow-none transition-all"
+                    title="Edit Garapan"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => toggleStatus(p.id, p.status)} className="flex items-center gap-1 text-xs font-bold uppercase px-2 py-1 bg-white border border-black shadow-[1px_1px_0px_#000] hover:bg-black hover:text-white transition-colors">
+                    {p.status === 'completed' ? 'Buka Lagi' : 'Tandai Selesai'}
+                  </button>
+                  <button onClick={() => deleteProject(p.id)} className="p-2 bg-accent-rose text-white border border-black shadow-[1px_1px_0px_#000] hover:translate-y-[1px] hover:shadow-none transition-all">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-            
-              <div className="flex items-center gap-2 shrink-0">
-                <button className="p-2 bg-accent-amber border border-black shadow-[1px_1px_0px_#000] hover:translate-y-[1px] hover:shadow-none transition-all">
-                  <Edit2 className="w-4 h-4" />
-                </button>
-                <button onClick={() => toggleStatus(p.id, p.status)} className="flex items-center gap-1 text-xs font-bold uppercase px-2 py-1 bg-white border border-black shadow-[1px_1px_0px_#000] hover:bg-black hover:text-white transition-colors">
-                  {p.status === 'completed' ? 'Buka Lagi' : 'Tandai Selesai'}
-                </button>
-                <button onClick={() => deleteProject(p.id)} className="p-2 bg-accent-rose text-white border border-black shadow-[1px_1px_0px_#000] hover:translate-y-[1px] hover:shadow-none transition-all">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
+
+      {/* EDIT MODAL */}
+      {showEdit && editItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="brutalist-card p-6 bg-white w-full max-w-lg shadow-[8px_8px_0px_#000] animate-fade-in">
+            <div className="flex items-center justify-between mb-4 pb-2 border-b-2 border-black">
+              <h2 className="text-xl font-black uppercase text-black">Edit Garapan</h2>
+              <button type="button" onClick={() => { setShowEdit(false); setEditItem(null); }} className="p-1 hover:bg-bg-secondary border-2 border-transparent hover:border-black transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <form onSubmit={updateProject} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase mb-1">Judul / Nama Proyek</label>
+                  <input name="title" type="text" defaultValue={editItem.platform} required className="brutalist-input w-full p-2 border-black" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase mb-1">Estimasi Reward</label>
+                  <input name="reward" type="text" defaultValue={editItem.estimated_reward} required className="brutalist-input w-full p-2 border-black" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase mb-1">Tanggal/Deadline</label>
+                  <input name="date" type="date" defaultValue={editItem.target_date} required className="brutalist-input w-full p-2 border-black" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase mb-1">Status Proyek</label>
+                  <select name="status" defaultValue={editItem.status} className="brutalist-input w-full p-2 border-black bg-white">
+                    <option value="active">Aktif (Active)</option>
+                    <option value="completed">Selesai (Completed)</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold uppercase mb-1">Keterangan / Catatan</label>
+                  <input name="notes" type="text" defaultValue={parseNotes(editItem.description)} placeholder="Keterangan tambahan" className="brutalist-input w-full p-2 border-black" />
+                </div>
+                <div className="md:col-span-2 flex flex-col gap-2 pt-2">
+                  <div className="flex items-center gap-2">
+                    <input 
+                      name="is_daily" 
+                      type="checkbox" 
+                      id="edit_is_daily_check" 
+                      checked={editIsDaily}
+                      onChange={(e) => setEditIsDaily(e.target.checked)}
+                      className="w-4 h-4 accent-black border-2 border-black" 
+                    />
+                    <label htmlFor="edit_is_daily_check" className="text-xs font-black uppercase cursor-pointer select-none">Misi Harian (Daily Quest)?</label>
+                  </div>
+                  {editIsDaily && (
+                    <div className="mt-2 animate-fade-in">
+                      <label className="block text-xs font-bold uppercase mb-1">Jam Reminder Bot (WIB)</label>
+                      <input name="reminder_time" type="time" defaultValue={parseReminderTime(editItem.description) || '08:00'} className="brutalist-input w-full p-2 border-black" required />
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-black">
+                <button type="button" onClick={() => { setShowEdit(false); setEditItem(null); }} className="px-4 py-2 bg-white text-black font-bold border border-black shadow-[1px_1px_0px_#000]">Batal</button>
+                <button type="submit" className="px-4 py-2 bg-accent-emerald text-black font-bold border border-black shadow-[1px_1px_0px_#000]">Simpan Perubahan</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

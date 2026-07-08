@@ -39,63 +39,135 @@ export async function GET(request: Request) {
     const targetMinutes1 = timeToMinutes(reminderTime1);
     const targetMinutes2 = reminderTime2 ? timeToMinutes(reminderTime2) : null;
 
-    // Cek apakah menit saat ini masuk ke jendela 10 menit setelah target
-    const isTime1 = currentMinutes >= targetMinutes1 && currentMinutes < targetMinutes1 + 10;
-    const isTime2 = targetMinutes2 !== null && currentMinutes >= targetMinutes2 && currentMinutes < targetMinutes2 + 10;
+    // Cek apakah menit saat ini masuk ke jendela 10 menit setelah target global
+    const isGlobalTime1 = currentMinutes >= targetMinutes1 && currentMinutes < targetMinutes1 + 10;
+    const isGlobalTime2 = targetMinutes2 !== null && currentMinutes >= targetMinutes2 && currentMinutes < targetMinutes2 + 10;
 
-    if (!isTime1 && !isTime2) {
-      return NextResponse.json({ success: true, message: `Not reminder time yet. Current WIB: ${currentHourMin}` });
+    // A. Tarik semua proyek harian yang aktif dari Supabase
+    const { data: activeProjects, error: projError } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('status', 'active')
+      .eq('is_daily', 1)
+      .is('deleted_at', null);
+
+    if (projError) {
+      console.error('[Cron] Supabase project error:', projError);
+      return NextResponse.json({ error: projError.message }, { status: 500 });
     }
 
-    // 5. Tarik tugas harian yang belum selesai untuk hari ini dari Supabase
-    const { data: tasks, error } = await supabase
+    const projectsToNotify: any[] = [];
+
+    // B. Cek jam pengingat masing-masing proyek harian
+    if (activeProjects && activeProjects.length > 0) {
+      for (const p of activeProjects) {
+        const pDesc = p.description || '';
+        const match = pDesc.match(/^\[Reminder:\s*([0-9]{2}:[0-9]{2})\]/);
+        const pReminderTime = match ? match[1] : null;
+
+        if (pReminderTime) {
+          const pMinutes = timeToMinutes(pReminderTime);
+          // Cek apakah jam saat ini cocok dengan jam pengingat proyek ini (+10 menit window)
+          if (currentMinutes >= pMinutes && currentMinutes < pMinutes + 10) {
+            // Cek apakah tugas harian untuk proyek ini hari ini belum selesai
+            const { data: task } = await supabase
+              .from('garapan_tasks')
+              .select('*')
+              .eq('project_id', p.id)
+              .eq('date', todayStr)
+              .eq('is_completed', false)
+              .is('deleted_at', null)
+              .maybeSingle();
+
+            if (task) {
+              projectsToNotify.push({ project: p, task });
+            }
+          }
+        }
+      }
+    }
+
+    // C. Tarik semua tugas harian hari ini yang belum selesai (untuk notifikasi global)
+    const { data: tasks, error: taskError } = await supabase
       .from('garapan_tasks')
       .select('*')
       .eq('date', todayStr)
       .eq('is_completed', false)
       .is('deleted_at', null);
 
-    if (error) {
-      console.error('[Cron] Supabase error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (taskError) {
+      console.error('[Cron] Supabase tasks error:', taskError);
+      return NextResponse.json({ error: taskError.message }, { status: 500 });
     }
 
-    if (!tasks || tasks.length === 0) {
-      return NextResponse.json({ success: true, message: 'All tasks completed or empty for today!' });
+    // D. Evaluasi apakah harus mengirim notifikasi
+    const shouldSendGlobal = (isGlobalTime1 || isGlobalTime2) && tasks && tasks.length > 0;
+    const shouldSendSpecific = projectsToNotify.length > 0;
+
+    if (!shouldSendGlobal && !shouldSendSpecific) {
+      return NextResponse.json({ 
+        success: true, 
+        message: `No reminders triggered. Current WIB: ${currentHourMin}. Pending daily tasks: ${tasks?.length || 0}.` 
+      });
     }
 
-    // 6. Siapkan Pesan Notifikasi Telegram
-    const taskListStr = tasks.map((t, idx) => `${idx + 1}. <b>${t.title}</b>`).join('\n');
-    let message = '';
-
-    if (isTime1) {
-      message = `📋 <b>Pengingat Tugas Harian (Ke-1)</b>\n\nBerikut adalah daftar garapan harian yang belum selesai hari ini:\n\n${taskListStr}\n\nSemangat garapnya! Jangan lupa selesaikan misinya.`;
-    } else if (isTime2) {
-      message = `⚠️ <b>Pengingat Tugas Harian (Ke-2)</b>\n\nAnda masih memiliki tugas harian yang belum diselesaikan hari ini!\n\n${taskListStr}\n\nSegera selesaikan sebelum berganti hari!`;
-    }
-
-    // 7. Kirim Notifikasi via Telegram Bot API
+    // E. Kirim pesan notifikasi
     const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
-    const res = await fetch(telegramUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: message,
-        parse_mode: 'HTML'
-      })
+
+    // 1. Kirim notifikasi spesifik proyek
+    if (shouldSendSpecific) {
+      for (const item of projectsToNotify) {
+        const specificMessage = `⏰ <b>Pengingat Misi Harian: ${item.project.platform}</b>\n\nAnda belum menyelesaikan misi harian untuk proyek ini!\n\nKeterangan: ${parseNotes(item.project.description)}\nDeadline: ${item.project.target_date}\n\nJangan lupa dikerjakan dan dicentang di aplikasi!`;
+        
+        await fetch(telegramUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: specificMessage,
+            parse_mode: 'HTML'
+          })
+        });
+      }
+    }
+
+    // 2. Kirim notifikasi ringkasan global
+    if (shouldSendGlobal) {
+      const taskListStr = tasks.map((t: any, idx: number) => `${idx + 1}. <b>${t.title}</b>`).join('\n');
+      let globalMessage = '';
+
+      if (isGlobalTime1) {
+        globalMessage = `📋 <b>Pengingat Tugas Harian (Ke-1)</b>\n\nBerikut adalah daftar garapan harian yang belum selesai hari ini:\n\n${taskListStr}\n\nSemangat garapnya! Jangan lupa selesaikan misinya.`;
+      } else if (isGlobalTime2) {
+        globalMessage = `⚠️ <b>Pengingat Tugas Harian (Ke-2)</b>\n\nAnda masih memiliki tugas harian yang belum diselesaikan hari ini!\n\n${taskListStr}\n\nSegera selesaikan sebelum berganti hari!`;
+      }
+
+      await fetch(telegramUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: globalMessage,
+          parse_mode: 'HTML'
+        })
+      });
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: `Notification processing completed. Specific sent: ${projectsToNotify.length}, Global sent: ${shouldSendGlobal ? 1 : 0}` 
     });
 
-    const data = await res.json();
-    if (data.ok) {
-      return NextResponse.json({ success: true, message: 'Notification sent successfully via Vercel Cron!' });
-    } else {
-      return NextResponse.json({ error: data.description || 'Failed to send Telegram message' }, { status: 500 });
-    }
   } catch (err) {
     console.error('[Cron] Runtime error:', err);
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
+}
+
+// Helpers untuk uraikan description proyek
+function parseNotes(desc: string) {
+  if (!desc) return '';
+  return desc.replace(/^\[Reminder:\s*[0-9]{2}:[0-9]{2}\]\s*/, '');
 }
 
 // Helper: Ubah "HH:MM" menjadi total menit dari tengah malam
