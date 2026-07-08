@@ -8,8 +8,8 @@
 import { db } from './db';
 import type { CoinSearchResult, CoinMarketData, PriceCache } from './types';
 
-/** Base URL CoinGecko API v3 */
-const BASE_URL = 'https://api.coingecko.com/api/v3';
+/** Base URL Next.js Proxy */
+const BASE_URL = '/api/crypto';
 
 /** Opsional API key untuk pro tier */
 const API_KEY = process.env.COINGECKO_API_KEY || '';
@@ -25,14 +25,12 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
  * Bangun URL dengan query params dan API key (jika ada).
  */
 function buildUrl(path: string, params: Record<string, string> = {}): string {
-  const url = new URL(`${BASE_URL}${path}`);
-  for (const [key, value] of Object.entries(params)) {
-    url.searchParams.set(key, value);
-  }
+  const searchParams = new URLSearchParams(params);
   if (API_KEY) {
-    url.searchParams.set('x_cg_demo_api_key', API_KEY);
+    searchParams.set('x_cg_demo_api_key', API_KEY);
   }
-  return url.toString();
+  const query = searchParams.toString();
+  return query ? `${BASE_URL}${path}?${query}` : `${BASE_URL}${path}`;
 }
 
 /**
@@ -71,16 +69,16 @@ async function safeFetch<T>(url: string): Promise<T | null> {
  * @returns Array hasil pencarian, kosong jika gagal/rate-limited
  */
 export async function searchCoins(query: string): Promise<CoinSearchResult[]> {
-  const url = buildUrl('/search', { query });
+  const url = buildUrl('/search', { q: query });
   const data = await safeFetch<{ coins: CoinSearchResult[] }>(url);
 
   if (!data?.coins) return [];
 
-  return data.coins.map((coin) => ({
+  return data.coins.map((coin: any) => ({
     id: coin.id,
     name: coin.name,
     symbol: coin.symbol,
-    thumb: coin.thumb,
+    thumb: coin.thumb || coin.large,
     market_cap_rank: coin.market_cap_rank,
   }));
 }
@@ -113,14 +111,8 @@ export async function batchFetchPrices(ids: string[]): Promise<PriceCache[]> {
   if (staleIds.length === 0) return cached;
 
   // Fetch dari API (max 250 per request di free tier)
-  const url = buildUrl('/coins/markets', {
-    vs_currency: 'usd',
+  const url = buildUrl('/prices', {
     ids: staleIds.join(','),
-    order: 'market_cap_desc',
-    per_page: '250',
-    page: '1',
-    sparkline: 'false',
-    price_change_percentage: '24h',
   });
 
   const marketData = await safeFetch<CoinMarketData[]>(url);
@@ -189,3 +181,13 @@ export async function getCachedPrice(
 ): Promise<PriceCache | undefined> {
   return db.price_cache.get(coingeckoId);
 }
+
+/**
+ * Ambil koin trending (top 7) dari CoinGecko via proxy.
+ */
+export async function getTrendingCoins(): Promise<any> {
+  const url = buildUrl('/trending');
+  const data = await safeFetch<any>(url);
+  return data ?? null;
+}
+

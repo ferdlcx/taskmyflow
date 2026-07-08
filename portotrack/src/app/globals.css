@@ -14,6 +14,8 @@
   --color-accent-teal: #14B8A6;
   --color-accent-amber: #F59E0B;
   --color-accent-rose: #F43F5E;
+  --color-accent-blue: #3B82F6;
+  --color-accent-purple: #8B5CF6;
   --color-text-primary: #000000;
   --color-text-secondary: #1F2937;
   --color-text-muted: #4B5563;
@@ -61,37 +63,36 @@ body {
 
 .brutalist-card {
   background: var(--color-bg-card);
-  border: 2px solid #000;
+  border: 1px solid #000;
   border-radius: 0;
-  box-shadow: 4px 4px 0px #000;
+  box-shadow: 2px 2px 0px #000;
   transition: all 0.2s ease;
 }
 
 .brutalist-card:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 6px 6px 0px #000;
+  box-shadow: 3px 3px 0px #000;
 }
 
 .brutalist-card-static {
   background: var(--color-bg-card);
-  border: 2px solid #000;
+  border: 1px solid #000;
   border-radius: 0;
-  box-shadow: 4px 4px 0px #000;
+  box-shadow: 2px 2px 0px #000;
 }
 
 .brutalist-input {
   background: var(--color-bg-card);
-  border: 2px solid #000;
+  border: 1px solid #000;
   border-radius: 0;
-  box-shadow: 2px 2px 0px #000;
+  box-shadow: 1px 1px 0px #000;
   transition: all 0.2s ease;
   color: var(--color-text-primary);
 }
 
 .brutalist-input:focus {
   outline: none;
-  box-shadow: 4px 4px 0px #000;
-  transform: translate(-2px, -2px);
+  border-color: var(--color-accent-emerald);
+  box-shadow: 2px 2px 0px var(--color-accent-emerald);
 }
 
 /* ─── Gradient Text ────────────────────────────────── */

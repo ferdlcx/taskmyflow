@@ -41,6 +41,8 @@ const SYNCABLE_TABLES: SyncableTable[] = [
   'transactions',
   'watchlist',
   'fiat_holdings',
+  'projects',
+  'garapan_tasks',
 ];
 
 // ---------------------------------------------------------------------------

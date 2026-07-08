@@ -1,8 +1,10 @@
 'use client';
 
+import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import AuthGuard from '@/components/AuthGuard';
+import PriceWatcher from '@/components/PriceWatcher';
 import { 
   LayoutDashboard, 
   Briefcase, 
@@ -11,7 +13,8 @@ import {
   Settings, 
   CalendarCheck,
   Layers,
-  Target
+  Target,
+  Megaphone
 } from 'lucide-react';
 
 // ─── Navigation Items ──────────────────────────────────
@@ -20,9 +23,9 @@ const navItems = [
   { href: '/dashboard', label: 'Beranda', icon: LayoutDashboard },
   { href: '/deadlines', label: 'Tugas', icon: CalendarCheck },
   { href: '/holdings', label: 'Aset', icon: Briefcase },
-  { href: '/watchlist', label: 'Pantau', icon: Eye },
   { href: '/sources', label: 'Sumber', icon: Link2 },
   { href: '/garapan', label: 'Garapan', icon: Target },
+  { href: '/events', label: 'Events', icon: Megaphone },
   { href: '/settings', label: 'Setelan', icon: Settings },
 ];
 
@@ -31,10 +34,30 @@ const navItems = [
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
+  // Preload CEX Events di awal buka aplikasi
+  useEffect(() => {
+    const preloadEvents = async () => {
+      try {
+        const res = await fetch('/api/events');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.data) {
+            localStorage.setItem('portotrack_cached_events', JSON.stringify(data.data));
+            localStorage.setItem('portotrack_cached_events_time', Date.now().toString());
+          }
+        }
+      } catch (err) {
+        console.error('Failed to preload events:', err);
+      }
+    };
+    preloadEvents();
+  }, []);
+
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
 
   return (
     <AuthGuard>
+      <PriceWatcher />
       <div className="flex h-dvh overflow-hidden bg-bg-secondary font-sans text-text-primary">
         {/* ── Desktop Sidebar ─────────────────────── */}
         <aside className="hidden md:flex flex-col w-64 bg-bg-card border-r-2 border-black shrink-0">

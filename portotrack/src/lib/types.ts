@@ -96,8 +96,10 @@ export interface WatchlistItem {
   user_id: string;
   /** FK ke tabel assets */
   asset_id: string;
-  /** Target harga dalam USD untuk notifikasi (opsional) */
-  target_price_usd: number | null;
+  /** Target harga dalam IDR untuk notifikasi/limit sell (opsional) */
+  target_price_idr: number | null;
+  /** Target harga dalam USD untuk notifikasi/limit sell (opsional) */
+  target_price_usd?: number | null;
   /** Catatan pengguna */
   note: string | null;
   created_at: string;
@@ -203,10 +205,11 @@ export type SyncableTable =
   | 'transactions'
   | 'watchlist'
   | 'fiat_holdings'
-  | 'projects';
+  | 'projects'
+  | 'garapan_tasks';
 
 /** Record dari salah satu tabel yang bisa disinkronisasi */
-export type SyncableRecord = Source | Transaction | WatchlistItem | FiatHolding | Project;
+export type SyncableRecord = Source | Transaction | WatchlistItem | FiatHolding | Project | GarapanTask;
 
 /** Payload untuk membuat entitas baru (tanpa field auto-generated) */
 export type CreatePayload<T> = Omit<
@@ -295,6 +298,7 @@ export interface Project {
   target_date: string;
   description: string;
   status: 'active' | 'completed';
+  is_daily?: number; // 0 atau 1
   created_at: string;
   updated_at: string;
   deleted_at: string | null;

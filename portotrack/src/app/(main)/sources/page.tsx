@@ -1,192 +1,267 @@
 'use client';
 
 import { useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/db';
+import { Plus, X, Trash2, Edit2, Wallet, Landmark, Blocks } from 'lucide-react';
+import type { Source } from '@/lib/types';
 
-// ─── Mock Data ─────────────────────────────────────────
-// TODO: Replace with real data from API/Dexie DB
-
-interface Source {
-  id: string;
-  name: string;
-  type: 'cex' | 'wallet' | 'defi';
-  icon: string;
-  totalValue: number;
-  assetsCount: number;
-  lastSync: string;
-}
-
-const MOCK_SOURCES: Source[] = [
-  { id: '1', name: 'Indodax', type: 'cex', icon: '🇮🇩', totalValue: 245_000_000, assetsCount: 5, lastSync: '2 jam lalu' },
-  { id: '2', name: 'Binance', type: 'cex', icon: '🔶', totalValue: 380_500_000, assetsCount: 8, lastSync: '5 menit lalu' },
-  { id: '3', name: 'MetaMask', type: 'wallet', icon: '🦊', totalValue: 125_800_000, assetsCount: 4, lastSync: '1 jam lalu' },
-  { id: '4', name: 'Tokocrypto', type: 'cex', icon: '🟢', totalValue: 89_200_000, assetsCount: 3, lastSync: '12 jam lalu' },
-];
-
-const TYPE_BADGES: Record<string, { label: string; className: string }> = {
-  cex: { label: 'CEX', className: 'bg-blue-500/15 text-blue-400' },
-  wallet: { label: 'Wallet', className: 'bg-purple-500/15 text-purple-400' },
-  defi: { label: 'DeFi', className: 'bg-accent-amber/15 text-accent-amber' },
+const TYPE_BADGES: Record<string, { label: string; icon: React.ReactNode }> = {
+  cex: { label: 'CEX', icon: <Landmark className="w-5 h-5" /> },
+  wallet: { label: 'Wallet', icon: <Wallet className="w-5 h-5" /> },
+  defi: { label: 'DeFi', icon: <Blocks className="w-5 h-5" /> },
 };
 
 function formatCurrency(amount: number) {
   return 'Rp ' + amount.toLocaleString('id-ID');
 }
 
-// ─── Sources Page ──────────────────────────────────────
-
 export default function SourcesPage() {
-  const [sources] = useState(MOCK_SOURCES);
+  const sources = useLiveQuery(() => db.sources.filter(s => !s.deleted_at).toArray()) || [];
+  const transactions = useLiveQuery(() => db.transactions.filter(t => !t.deleted_at).toArray()) || [];
+  const assets = useLiveQuery(() => db.assets.toArray()) || [];
+  const priceCache = useLiveQuery(() => db.price_cache.toArray()) || [];
+  const fiatHoldings = useLiveQuery(() => db.fiat_holdings.filter(f => !f.deleted_at).toArray()) || [];
+  
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
-  const totalValue = sources.reduce((sum, s) => sum + s.totalValue, 0);
+  const [formData, setFormData] = useState({ name: '', type: 'cex' as 'cex'|'wallet'|'defi' });
+
+  // Ambil data kurs dan mata uang tampilan
+  const displayCurrency = typeof window !== 'undefined' ? (localStorage.getItem('portotrack_display_currency') || 'IDR') : 'IDR';
+  const kurs = typeof window !== 'undefined' ? (Number(localStorage.getItem('portotrack_kurs')) || 16100) : 16100;
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim()) return;
+
+    if (editId) {
+      await db.sources.update(editId, {
+        name: formData.name,
+        type: formData.type as 'cex'|'wallet',
+        updated_at: new Date().toISOString(),
+        sync_status: 'pending'
+      });
+      setEditId(null);
+    } else {
+      await db.sources.add({
+        id: crypto.randomUUID(),
+        user_id: 'local_user',
+        name: formData.name,
+        type: formData.type as 'cex'|'wallet',
+        icon_url: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        deleted_at: null,
+        sync_status: 'pending'
+      });
+      setShowAdd(false);
+    }
+    setFormData({ name: '', type: 'cex' });
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Yakin ingin menghapus sumber ini? Semua transaksi terkait tidak akan terhapus tapi kehilangan referensi.')) {
+      await db.sources.update(id, {
+        deleted_at: new Date().toISOString(),
+        sync_status: 'pending'
+      });
+    }
+  };
+
+  const startEdit = (s: Source) => {
+    setEditId(s.id);
+    setFormData({ name: s.name, type: s.type as 'cex'|'wallet'|'defi' });
+  };
 
   return (
-    <div className="px-4 md:px-8 py-6 md:py-8 max-w-4xl mx-auto">
+    <div className="px-4 py-8 max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between border-b-4 border-black pb-4">
         <div>
-          <h1 className="text-xl font-bold text-text-primary">Sumber</h1>
-          <p className="text-text-muted text-sm mt-0.5">
-            {sources.length} sumber · Total {formatCurrency(totalValue)}
-          </p>
+          <h1 className="text-3xl font-black uppercase text-black">Sumber Aset</h1>
+          <p className="text-text-muted font-bold mt-1">Kelola daftar Exchange dan Wallet Anda</p>
         </div>
         <button
-          onClick={() => { setShowAdd(!showAdd); setEditId(null); }}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-text-secondary text-sm font-medium
-            hover:bg-white/5 hover:text-text-primary transition-all duration-200 active:scale-95"
+          onClick={() => { setShowAdd(!showAdd); setEditId(null); setFormData({ name: '', type: 'cex' }); }}
+          className="flex items-center gap-2 px-4 py-2 bg-accent-amber border-2 border-black font-black uppercase shadow-[4px_4px_0px_#000] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-[2px_2px_0px_#000] transition-all"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          Tambah
+          {showAdd ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+          {showAdd ? 'Batal' : 'Tambah'}
         </button>
       </div>
 
-      {/* Add / Edit Form */}
+      {/* Add Form */}
       {showAdd && (
-        <div className="brutalist-card p-5 mb-5 animate-fade-in space-y-4">
-          <h3 className="text-sm font-semibold text-text-primary">Tambah Sumber Baru</h3>
-
-          <div className="space-y-3">
-            <input
-              type="text"
-              placeholder="Nama sumber (cth: Binance, MetaMask)"
-              className="w-full brutalist-input px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted"
-            />
-
-            <div className="flex gap-2">
-              {Object.entries(TYPE_BADGES).map(([key, badge]) => (
-                <button
-                  key={key}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border border-transparent
-                    ${badge.className} hover:border-white/10`}
-                >
-                  {badge.label}
-                </button>
-              ))}
+        <div className="brutalist-card p-6 bg-white border-4 border-black shadow-[8px_8px_0px_#000] animate-fade-in">
+          <h3 className="text-xl font-black uppercase mb-4">Tambah Sumber Baru</h3>
+          <form onSubmit={handleSave} className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold uppercase mb-1">Nama Sumber</label>
+              <input
+                type="text"
+                placeholder="Cth: Binance, MetaMask"
+                value={formData.name}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                className="brutalist-input w-full p-3 bg-white"
+                required
+              />
             </div>
-
-            <div className="flex gap-2 pt-1">
-              <button className="flex-1 py-2.5 rounded-xl gradient-emerald text-white text-sm font-medium hover:shadow-lg hover:shadow-accent-emerald/20 transition-all active:scale-95">
-                Simpan
-              </button>
-              <button
-                onClick={() => setShowAdd(false)}
-                className="px-4 py-2.5 rounded-xl border border-border text-text-secondary text-sm hover:bg-white/5 transition-all"
-              >
-                Batal
-              </button>
+            <div>
+              <label className="block text-sm font-bold uppercase mb-1">Tipe</label>
+              <div className="flex gap-2">
+                {Object.entries(TYPE_BADGES).map(([key, badge]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, type: key as any })}
+                    className={`flex-1 py-3 border-2 border-black font-black uppercase transition-all flex items-center justify-center gap-2
+                      ${formData.type === key ? 'bg-accent-emerald shadow-[4px_4px_0px_#000] -translate-y-1' : 'bg-white hover:bg-gray-100'}`}
+                  >
+                    {badge.icon} {badge.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-          {/* TODO: Implement save logic */}
+            <button type="submit" className="w-full py-3 bg-accent-blue text-white font-black uppercase border-2 border-black shadow-[4px_4px_0px_#000] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-[2px_2px_0px_#000] transition-all">
+              Simpan Sumber
+            </button>
+          </form>
         </div>
       )}
 
       {/* Sources List */}
-      <div className="space-y-3 stagger-children">
-        {sources.map((source) => {
-          const badge = TYPE_BADGES[source.type];
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {sources.length === 0 && !showAdd && (
+          <div className="col-span-full text-center p-8 border-4 border-dashed border-black bg-white">
+            <Wallet className="w-12 h-12 mx-auto mb-4" />
+            <h2 className="text-2xl font-black uppercase mb-2">Belum ada sumber</h2>
+            <p className="text-text-muted font-bold">Tambahkan exchange atau wallet pertama Anda</p>
+          </div>
+        )}
+
+        {sources.map(source => {
+          const badge = TYPE_BADGES[source.type] || TYPE_BADGES.cex;
           const isEditing = editId === source.id;
+          
+          // Hitung saldo aset kripto untuk sumber ini
+          const sourceCryptoHoldings = new Map<string, number>(); // asset_id -> qty
+          const sourceTransactions = transactions.filter(t => t.source_id === source.id);
+          
+          sourceTransactions.forEach(t => {
+            const currentQty = sourceCryptoHoldings.get(t.asset_id) || 0;
+            if (t.type === 'buy') {
+              sourceCryptoHoldings.set(t.asset_id, currentQty + t.quantity);
+            } else if (t.type === 'sell') {
+              sourceCryptoHoldings.set(t.asset_id, currentQty - t.quantity);
+            }
+          });
+
+          // Hitung total nilai USD untuk kripto
+          let cryptoValueUSD = 0;
+          sourceCryptoHoldings.forEach((qty, assetId) => {
+            if (qty > 0) {
+              const asset = assets.find(a => a.id === assetId);
+              const price = priceCache.find(p => p.coingecko_id === asset?.coingecko_id);
+              const priceUSD = price?.price_usd || 0;
+              cryptoValueUSD += qty * priceUSD;
+            }
+          });
+
+          // Hitung total saldo fiat (IDR) untuk sumber ini
+          const sourceFiats = fiatHoldings.filter(f => f.source_id === source.id);
+          const fiatValueIDR = sourceFiats.reduce((sum, f) => sum + f.amount, 0);
+
+          // Hitung estimasi rekap total
+          const hasCrypto = cryptoValueUSD > 0;
+          const hasFiat = fiatValueIDR > 0;
 
           return (
-            <div key={source.id} className="brutalist-card p-4">
-              <div className="flex items-center gap-3">
-                {/* Icon */}
-                <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-2xl shrink-0">
-                  {source.icon}
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <p className="text-sm font-semibold text-text-primary">{source.name}</p>
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${badge.className}`}>
-                      {badge.label}
-                    </span>
-                  </div>
-                  <p className="text-xs text-text-muted">
-                    {source.assetsCount} aset · Sync {source.lastSync}
-                  </p>
-                </div>
-
-                {/* Value + Actions */}
-                <div className="text-right">
-                  <p className="text-sm font-semibold text-text-primary">
-                    {formatCurrency(source.totalValue)}
-                  </p>
-                  <div className="flex gap-2 mt-1 justify-end">
-                    <button
-                      onClick={() => setEditId(isEditing ? null : source.id)}
-                      className="text-[11px] text-text-muted hover:text-accent-emerald transition-colors"
-                      title="Edit"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      className="text-[11px] text-text-muted hover:text-accent-rose transition-colors"
-                      title="Hapus"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Edit panel */}
-              {isEditing && (
-                <div className="mt-3 pt-3 border-t border-border animate-fade-in space-y-3">
+            <div key={source.id} className="brutalist-card p-5 bg-white border-2 border-black shadow-[4px_4px_0px_#000] flex flex-col group relative">
+              {isEditing ? (
+                <form onSubmit={handleSave} className="space-y-4">
                   <input
                     type="text"
-                    defaultValue={source.name}
-                    className="w-full brutalist-input px-3 py-2 text-sm text-text-primary"
+                    value={formData.name}
+                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                    className="brutalist-input w-full p-2 bg-white"
+                    required
                   />
                   <div className="flex gap-2">
-                    <button className="px-4 py-2 rounded-lg gradient-emerald text-white text-sm font-medium active:scale-95 transition-all">
-                      Simpan
-                    </button>
-                    <button onClick={() => setEditId(null)} className="px-4 py-2 rounded-lg border border-border text-text-secondary text-sm hover:bg-white/5 transition-all">
-                      Batal
-                    </button>
+                     <select value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value as any })} className="brutalist-input p-2 flex-1">
+                        <option value="cex">CEX</option>
+                        <option value="wallet">Wallet</option>
+                        <option value="defi">DeFi</option>
+                     </select>
                   </div>
-                  {/* TODO: Implement edit/delete logic */}
-                </div>
+                  <div className="flex gap-2">
+                    <button type="submit" className="flex-1 py-2 bg-accent-emerald font-black uppercase border-2 border-black shadow-[2px_2px_0px_#000] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all">Simpan</button>
+                    <button type="button" onClick={() => setEditId(null)} className="flex-1 py-2 bg-gray-200 font-black uppercase border-2 border-black shadow-[2px_2px_0px_#000] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all">Batal</button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-accent-amber border-2 border-black">
+                        {badge.icon}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-black uppercase">{source.name}</h3>
+                        <span className="inline-block px-2 py-0.5 mt-1 bg-black text-white text-xs font-bold uppercase">
+                          {badge.label}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Rekap Saldo */}
+                  <div className="mt-4 pt-4 border-t-2 border-dashed border-black">
+                    <span className="text-[10px] font-black uppercase text-text-muted block mb-1">Rekap Saldo Aset</span>
+                    <div className="space-y-1">
+                      {hasCrypto && (
+                        <div className="flex justify-between items-center text-sm font-bold uppercase text-black">
+                          <span>Crypto</span>
+                          <span>
+                            ${cryptoValueUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      )}
+                      {hasFiat && (
+                        <div className="flex justify-between items-center text-sm font-bold uppercase text-black">
+                          <span>Fiat / Cash</span>
+                          <span>
+                            {formatCurrency(fiatValueIDR)}
+                          </span>
+                        </div>
+                      )}
+                      {!hasCrypto && !hasFiat && (
+                        <span className="text-xs font-bold text-text-muted italic block">Tidak ada saldo aktif</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-2 border-t border-gray-200 flex justify-between items-center">
+                    <div>
+                      <p className="text-[10px] font-black text-text-muted uppercase">Transaksi</p>
+                      <p className="text-xs font-bold text-black">{sourceTransactions.length} Txn</p>
+                    </div>
+                    <div className="flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => startEdit(source)} className="p-2 bg-white border-2 border-black hover:bg-accent-blue hover:text-white transition-colors">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDelete(source.id)} className="p-2 bg-white border-2 border-black hover:bg-accent-rose hover:text-white transition-colors">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           );
         })}
       </div>
-
-      {sources.length === 0 && (
-        <div className="text-center py-16">
-          <div className="text-4xl mb-4">🏦</div>
-          <p className="text-text-muted text-sm">Belum ada sumber</p>
-          <p className="text-text-muted text-xs mt-1">Tambahkan exchange atau wallet kamu</p>
-        </div>
-      )}
-
-      {/* Bottom spacer */}
-      <div className="h-8" />
     </div>
   );
 }

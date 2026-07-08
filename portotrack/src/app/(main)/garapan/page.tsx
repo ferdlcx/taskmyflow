@@ -1,35 +1,114 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, Trash2, CheckCircle, Circle, Edit2, TrendingUp, CheckSquare, Square } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Trash2, CheckSquare, Square, TrendingUp, Edit2 } from 'lucide-react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/db';
 
-const MOCK_GARAPAN = [
-  { id: '1', platform: 'Galxe', estimated_reward: '$50', target_date: '2026-07-15', description: 'Testnet V2 Campaign', status: 'active' },
-  { id: '2', platform: 'Binance', estimated_reward: '100 BNB', target_date: '2026-07-10', description: 'Megadrop Airdrop', status: 'active' },
-  { id: '3', platform: 'Bybit', estimated_reward: 'Mantle Tokens', target_date: '2026-06-30', description: 'MNT Staking Pool', status: 'completed' },
-];
 
-const MOCK_DAILY_TASKS = [
-  { id: 't1', title: 'Check-in Galxe', is_completed: false },
-  { id: 't2', title: 'Claim Binance Megadrop Points', is_completed: true },
-  { id: 't3', title: 'Interact with zkSync dApps', is_completed: false },
-];
 
 export default function GarapanPage() {
-  const [projects, setProjects] = useState(MOCK_GARAPAN);
+  const projects = useLiveQuery(() => db.projects.filter(p => !p.deleted_at).toArray()) || [];
+  
+  const dailyTasks = useLiveQuery(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return db.garapan_tasks.where('date').equals(today).toArray();
+  }) || [];
+
+  // Auto-generate daily tasks for active projects marked as is_daily
+  useEffect(() => {
+    if (projects.length === 0) return;
+
+    const generateDailyTasks = async () => {
+      const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const activeDailies = projects.filter(p => p.status === 'active' && p.is_daily === 1);
+
+      for (const proj of activeDailies) {
+        // Cek jika deadline proyek belum terlewati
+        if (proj.target_date && proj.target_date >= todayStr) {
+          // Cek apakah tugas harian untuk proyek ini di hari ini sudah ada
+          const exists = await db.garapan_tasks
+            .where('project_id')
+            .equals(proj.id)
+            .and(t => t.date === todayStr)
+            .first();
+
+          if (!exists) {
+            await db.garapan_tasks.add({
+              id: crypto.randomUUID(),
+              project_id: proj.id,
+              title: `[Daily] ${proj.title || proj.platform}`,
+              is_completed: false,
+              date: todayStr,
+              sync_status: 'pending'
+            });
+          }
+        }
+      }
+    };
+
+    generateDailyTasks();
+  }, [projects]);
+  
   const [showAdd, setShowAdd] = useState(false);
-  const [dailyTasks, setDailyTasks] = useState(MOCK_DAILY_TASKS);
+  const [showTaskAdd, setShowTaskAdd] = useState(false);
+  const [taskTitle, setTaskTitle] = useState('');
 
-  const toggleStatus = (id: string) => {
-    setProjects(prev => prev.map(p => p.id === id ? { ...p, status: p.status === 'active' ? 'completed' : 'active' } : p));
+  const toggleStatus = async (id: string, currentStatus: string) => {
+    await db.projects.update(id, { status: currentStatus === 'active' ? 'completed' : 'active', sync_status: 'pending' });
   };
 
-  const deleteProject = (id: string) => {
-    setProjects(prev => prev.filter(p => p.id !== id));
+  const deleteProject = async (id: string) => {
+    if (confirm('Hapus proyek ini?')) {
+      await db.projects.update(id, { deleted_at: new Date().toISOString(), sync_status: 'pending' });
+    }
   };
 
-  const toggleDailyTask = (id: string) => {
-    setDailyTasks(prev => prev.map(t => t.id === id ? { ...t, is_completed: !t.is_completed } : t));
+  const toggleDailyTask = async (id: string, currentStatus: boolean) => {
+    await db.garapan_tasks.update(id, { is_completed: !currentStatus });
+  };
+
+  const deleteDailyTask = async (id: string) => {
+    await db.garapan_tasks.delete(id);
+  };
+
+  const addDailyTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!taskTitle.trim()) return;
+    
+    await db.garapan_tasks.add({
+      id: crypto.randomUUID(),
+      project_id: '',
+      title: taskTitle.trim(),
+      is_completed: false,
+      date: new Date().toISOString().split('T')[0],
+      sync_status: 'pending'
+    });
+    setTaskTitle('');
+    setShowTaskAdd(false);
+  };
+
+  const addProject = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const isDailyChecked = formData.get('is_daily') === 'on';
+
+    await db.projects.add({
+      id: crypto.randomUUID(),
+      user_id: 'local_user',
+      title: formData.get('title') as string,
+      platform: formData.get('platform') as string,
+      target_date: formData.get('date') as string,
+      estimated_reward: formData.get('reward') as string,
+      status: 'active',
+      is_daily: isDailyChecked ? 1 : 0,
+      notes: formData.get('notes') as string,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      deleted_at: null,
+      sync_status: 'pending'
+    });
+    setShowAdd(false);
   };
 
   return (
@@ -45,90 +124,123 @@ export default function GarapanPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="brutalist-card p-4 bg-accent-blue/20 border-2 border-black shadow-[4px_4px_0px_#000]">
+        <div className="brutalist-card p-4 bg-blue-100">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="w-5 h-5" />
-            <h2 className="text-lg font-black uppercase">Proyeksi Reward</h2>
+            <h2 className="text-lg font-black uppercase">Status Proyek</h2>
           </div>
-          <div className="text-3xl font-black">$1,250 + 100 BNB</div>
-          <p className="text-xs font-bold uppercase mt-2 text-text-muted">Berdasarkan 3 Proyek Aktif</p>
+          <div className="text-3xl font-black">{projects.filter(p => p.status === 'active').length} Aktif</div>
+          <p className="text-xs font-bold uppercase mt-2 text-text-muted">Dari total {projects.length} garapan</p>
         </div>
         
-        <div className="brutalist-card p-4 bg-accent-pink/20 border-2 border-black shadow-[4px_4px_0px_#000]">
+        <div className="brutalist-card p-4 bg-pink-100">
           <div className="flex items-center gap-2 mb-2">
             <CheckSquare className="w-5 h-5" />
             <h2 className="text-lg font-black uppercase">Daily Tracker</h2>
           </div>
           <div className="space-y-2 mt-3">
             {dailyTasks.map(t => (
-              <div key={t.id} className="flex items-center gap-3">
-                <button onClick={() => toggleDailyTask(t.id)} className="hover:scale-110 transition-transform">
-                  {t.is_completed ? <CheckSquare className="w-5 h-5 text-black" /> : <Square className="w-5 h-5 text-black" />}
+              <div key={t.id} className="flex items-center justify-between gap-3 group">
+                <div className="flex items-center gap-3">
+                  <button onClick={() => toggleDailyTask(t.id, t.is_completed)} className="hover:scale-110 transition-transform">
+                    {t.is_completed ? <CheckSquare className="w-5 h-5 text-black" /> : <Square className="w-5 h-5 text-black" />}
+                  </button>
+                  <span className={`text-sm font-bold uppercase ${t.is_completed ? 'line-through opacity-50' : ''}`}>
+                    {t.title}
+                  </span>
+                </div>
+                <button onClick={() => deleteDailyTask(t.id)} className="opacity-0 group-hover:opacity-100 p-1 text-accent-rose hover:scale-110 transition-all">
+                  <Trash2 className="w-4 h-4" />
                 </button>
-                <span className={`text-sm font-bold uppercase ${t.is_completed ? 'line-through opacity-50' : ''}`}>
-                  {t.title}
-                </span>
               </div>
             ))}
+            
+            {!showTaskAdd ? (
+              <button onClick={() => setShowTaskAdd(true)} className="text-xs font-bold uppercase flex items-center gap-1 text-text-muted hover:text-black mt-2">
+                <Plus className="w-3 h-3" /> Tambah Task
+              </button>
+            ) : (
+              <form onSubmit={addDailyTask} className="flex items-center gap-2 mt-2">
+                <input 
+                  type="text" 
+                  autoFocus
+                  value={taskTitle}
+                  onChange={e => setTaskTitle(e.target.value)}
+                  placeholder="Nama task..." 
+                  className="brutalist-input flex-1 p-1 text-sm border-black" 
+                />
+                <button type="submit" className="bg-black text-white px-2 py-1 text-xs font-bold border border-black hover:bg-accent-emerald hover:text-black transition-colors">OK</button>
+                <button type="button" onClick={() => setShowTaskAdd(false)} className="bg-white text-black px-2 py-1 text-xs font-bold border border-black hover:bg-gray-100">X</button>
+              </form>
+            )}
           </div>
         </div>
       </div>
 
       {showAdd && (
-        <div className="brutalist-card p-6 bg-accent-teal/20 space-y-4 animate-fade-in-up">
+        <form onSubmit={addProject} className="brutalist-card p-6 bg-teal-100 space-y-4 animate-fade-in-up">
           <h2 className="text-xl font-black uppercase border-b-2 border-black pb-2 mb-4">Input Garapan Baru</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
+              <label className="block text-xs font-bold uppercase mb-1">Judul / Nama Proyek</label>
+              <input name="title" type="text" required placeholder="Contoh: Megadrop" className="brutalist-input w-full p-2 border-black" />
+            </div>
+            <div>
               <label className="block text-xs font-bold uppercase mb-1">Platform (CEX/Web)</label>
-              <input type="text" placeholder="Contoh: Binance" className="brutalist-input w-full p-2" />
+              <input name="platform" type="text" required placeholder="Contoh: Binance" className="brutalist-input w-full p-2 border-black" />
             </div>
             <div>
               <label className="block text-xs font-bold uppercase mb-1">Estimasi Reward</label>
-              <input type="text" placeholder="Contoh: $50 / 100 Token" className="brutalist-input w-full p-2" />
+              <input name="reward" type="text" required placeholder="Contoh: $50 / 100 Token" className="brutalist-input w-full p-2 border-black" />
             </div>
             <div>
               <label className="block text-xs font-bold uppercase mb-1">Tanggal/Deadline</label>
-              <input type="date" className="brutalist-input w-full p-2" />
+              <input name="date" type="date" required className="brutalist-input w-full p-2 border-black" />
             </div>
             <div>
               <label className="block text-xs font-bold uppercase mb-1">Keterangan / Sumber</label>
-              <input type="text" placeholder="Catatan tambahan" className="brutalist-input w-full p-2" />
+              <input name="notes" type="text" placeholder="Catatan tambahan" className="brutalist-input w-full p-2 border-black" />
+            </div>
+            <div className="flex items-center gap-2 pt-5">
+              <input name="is_daily" type="checkbox" id="is_daily_check" className="w-4 h-4 accent-black border-2 border-black" />
+              <label htmlFor="is_daily_check" className="text-xs font-black uppercase cursor-pointer select-none">Misi Harian (Daily Quest)?</label>
             </div>
           </div>
-          <div className="flex justify-end gap-2 mt-4 pt-4 border-t-2 border-black">
-            <button onClick={() => setShowAdd(false)} className="px-4 py-2 bg-white text-black font-bold border-2 border-black shadow-[2px_2px_0px_#000]">Batal</button>
-            <button className="px-4 py-2 bg-accent-emerald text-black font-bold border-2 border-black shadow-[2px_2px_0px_#000]">Simpan Garapan</button>
+          <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-black">
+            <button type="button" onClick={() => setShowAdd(false)} className="px-4 py-2 bg-white text-black font-bold border border-black shadow-[1px_1px_0px_#000]">Batal</button>
+            <button type="submit" className="px-4 py-2 bg-accent-emerald text-black font-bold border border-black shadow-[1px_1px_0px_#000]">Simpan Garapan</button>
           </div>
-        </div>
+        </form>
       )}
 
       <div className="space-y-4">
         {projects.map(p => (
-          <div key={p.id} className={`brutalist-card p-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between ${p.status === 'completed' ? 'opacity-50 bg-bg-secondary' : 'bg-white'}`}>
-            <div className="flex items-start gap-3 flex-1">
-              <button onClick={() => toggleStatus(p.id)} className="mt-1 hover:scale-110 transition-transform">
-                {p.status === 'completed' ? <CheckCircle className="w-6 h-6 text-accent-emerald" /> : <Circle className="w-6 h-6 text-text-muted" />}
-              </button>
+          <div key={p.id} className={`brutalist-card p-4 border-l-8 ${p.status === 'completed' ? 'border-l-black bg-gray-100 opacity-60' : 'border-l-accent-amber bg-white'} hover:-translate-y-1 transition-transform`}>
+            <div className="flex justify-between items-start flex-col md:flex-row gap-4 md:gap-0">
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="px-2 py-0.5 text-[10px] font-black uppercase bg-black text-white border border-black">{p.platform}</span>
-                  <span className={`px-2 py-0.5 text-[10px] font-black uppercase border border-black ${p.status === 'active' ? 'bg-accent-emerald' : 'bg-bg-secondary'}`}>{p.status}</span>
+                <div className="flex items-center gap-2">
+                  <h3 className={`text-lg font-black uppercase ${p.status === 'completed' ? 'line-through' : ''}`}>{p.title || p.platform}</h3>
+                  {p.is_daily === 1 && (
+                    <span className="text-[9px] font-black bg-accent-purple text-white px-1.5 py-0.5 border border-black uppercase">Daily</span>
+                  )}
                 </div>
-                <h3 className={`text-lg font-black uppercase ${p.status === 'completed' ? 'line-through text-text-muted' : 'text-black'}`}>{p.description}</h3>
                 <div className="flex items-center gap-4 text-xs font-bold text-text-muted mt-1 uppercase">
                   <span>💰 Reward: {p.estimated_reward}</span>
                   <span>📅 Date: {p.target_date}</span>
                 </div>
               </div>
-            </div>
             
-            <div className="flex items-center gap-2 shrink-0">
-              <button className="p-2 bg-accent-amber border-2 border-black shadow-[2px_2px_0px_#000] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#000] transition-all">
-                <Edit2 className="w-4 h-4" />
-              </button>
-              <button onClick={() => deleteProject(p.id)} className="p-2 bg-accent-rose text-white border-2 border-black shadow-[2px_2px_0px_#000] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#000] transition-all">
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button className="p-2 bg-accent-amber border border-black shadow-[1px_1px_0px_#000] hover:translate-y-[1px] hover:shadow-none transition-all">
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button onClick={() => toggleStatus(p.id, p.status)} className="flex items-center gap-1 text-xs font-bold uppercase px-2 py-1 bg-white border border-black shadow-[1px_1px_0px_#000] hover:bg-black hover:text-white transition-colors">
+                  {p.status === 'completed' ? 'Buka Lagi' : 'Tandai Selesai'}
+                </button>
+                <button onClick={() => deleteProject(p.id)} className="p-2 bg-accent-rose text-white border border-black shadow-[1px_1px_0px_#000] hover:translate-y-[1px] hover:shadow-none transition-all">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         ))}

@@ -11,9 +11,11 @@
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { message, parse_mode = 'HTML' } = body as {
+    const { message, parse_mode = 'HTML', botToken: customToken, chatId: customChatId } = body as {
       message?: string;
       parse_mode?: 'HTML' | 'Markdown';
+      botToken?: string;
+      chatId?: string;
     };
 
     // Validasi input
@@ -24,16 +26,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    const chatId = process.env.TELEGRAM_CHAT_ID;
+    const botToken = customToken || process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = customChatId || process.env.TELEGRAM_CHAT_ID;
 
     if (!botToken || !chatId) {
       console.error(
         '[Telegram Notify] TELEGRAM_BOT_TOKEN atau TELEGRAM_CHAT_ID belum diatur'
       );
       return Response.json(
-        { success: false, error: 'Server configuration error' },
-        { status: 500 }
+        { success: false, error: 'Kredensial Telegram (Bot Token / Chat ID) tidak lengkap' },
+        { status: 400 }
       );
     }
 

@@ -1,17 +1,44 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Calendar, List, CheckSquare } from 'lucide-react';
-
-const mockDeadlines = [
-  { id: 1, title: 'TGE: ZK Sync', type: 'tge', date: '2026-07-15', amount: '$5,000 Est' },
-  { id: 2, title: 'Task: LayerZero bridging', type: 'task', date: '2026-07-10', priority: 'High' },
-  { id: 3, title: 'TGE: Starknet Phase 2', type: 'tge', date: '2026-08-01', amount: 'Unknown' },
-  { id: 4, title: 'Task: Testnet Node setup', type: 'task', date: '2026-07-12', priority: 'Medium' },
-];
+import { Calendar, List, Plus, X, Trash2 } from 'lucide-react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/db';
+import type { Deadline } from '@/lib/types';
 
 export default function DeadlinesPage() {
   const [view, setView] = useState<'list' | 'calendar'>('list');
+  const [showAdd, setShowAdd] = useState(false);
+  
+  // Real DB Data
+  const deadlines = useLiveQuery(() => db.deadlines.filter(d => !d.deleted_at).toArray()) || [];
+
+  const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const title = formData.get('title') as string;
+    const type = formData.get('type') as 'tge' | 'college' | 'other';
+    const date = formData.get('date') as string;
+    const notes = formData.get('notes') as string;
+
+    await db.deadlines.add({
+      id: crypto.randomUUID(),
+      title,
+      type,
+      date,
+      notes: notes || null,
+      sync_status: 'pending',
+      updated_at: new Date().toISOString(),
+      deleted_at: null,
+    });
+    setShowAdd(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Hapus deadline ini?')) {
+      await db.deadlines.update(id, { deleted_at: new Date().toISOString(), sync_status: 'pending' });
+    }
+  };
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
@@ -21,31 +48,43 @@ export default function DeadlinesPage() {
           <p className="text-sm font-bold text-text-muted mt-1 uppercase">Pantau TGE dan tugas-tugas penting Anda</p>
         </div>
         
-        <div className="flex bg-white border-2 border-black p-1 shadow-[2px_2px_0px_#000]">
+        <div className="flex gap-2">
           <button
-            onClick={() => setView('list')}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-bold uppercase transition-colors ${
-              view === 'list' ? 'bg-accent-emerald text-black border-2 border-black' : 'text-text-muted hover:text-black border-2 border-transparent'
-            }`}
+            onClick={() => setShowAdd(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-accent-amber text-black text-sm font-black uppercase border-2 border-black shadow-[2px_2px_0px_#000] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all"
           >
-            <List className="w-4 h-4" /> List
+            <Plus className="w-4 h-4" /> Tambah
           </button>
-          <button
-            onClick={() => setView('calendar')}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-bold uppercase transition-colors ${
-              view === 'calendar' ? 'bg-accent-emerald text-black border-2 border-black' : 'text-text-muted hover:text-black border-2 border-transparent'
-            }`}
-          >
-            <Calendar className="w-4 h-4" /> Calendar
-          </button>
+          <div className="flex bg-white border-2 border-black p-1 shadow-[2px_2px_0px_#000]">
+            <button
+              onClick={() => setView('list')}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-bold uppercase transition-colors ${
+                view === 'list' ? 'bg-accent-emerald text-black border-2 border-black' : 'text-text-muted hover:text-black border-2 border-transparent'
+              }`}
+            >
+              <List className="w-4 h-4" /> List
+            </button>
+            <button
+              onClick={() => setView('calendar')}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-bold uppercase transition-colors ${
+                view === 'calendar' ? 'bg-accent-emerald text-black border-2 border-black' : 'text-text-muted hover:text-black border-2 border-transparent'
+              }`}
+            >
+              <Calendar className="w-4 h-4" /> Calendar
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="brutalist-card p-6 bg-white min-h-[400px]">
-        {view === 'list' ? (
+        {deadlines.length === 0 ? (
+          <div className="p-8 text-center border-2 border-dashed border-black font-bold uppercase text-text-muted bg-white">
+            Belum ada deadline tersimpan.
+          </div>
+        ) : view === 'list' ? (
           <div className="space-y-4">
-            {mockDeadlines.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map(d => (
-              <div key={d.id} className="flex items-center justify-between p-4 bg-bg-primary border-2 border-black shadow-[2px_2px_0px_#000] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all group cursor-pointer">
+            {deadlines.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map(d => (
+              <div key={d.id} className="flex items-center justify-between p-4 bg-bg-primary border-2 border-black shadow-[2px_2px_0px_#000] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all group cursor-pointer relative overflow-hidden">
                 <div className="flex items-center gap-4">
                   <div className={`w-3 h-3 border-2 border-black ${d.type === 'tge' ? 'bg-accent-emerald' : 'bg-accent-blue'}`} />
                   <div>
@@ -56,9 +95,11 @@ export default function DeadlinesPage() {
                     </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  {d.type === 'tge' && <span className="text-sm font-black text-accent-emerald bg-accent-emerald/20 px-2 py-1 border-2 border-black">{d.amount}</span>}
-                  {d.type === 'task' && <span className={`text-sm font-black px-2 py-1 border-2 border-black ${d.priority === 'High' ? 'text-accent-rose bg-accent-rose/20' : 'text-text-muted bg-gray-200'}`}>{d.priority} Priority</span>}
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-black text-black hidden md:block">{d.notes}</span>
+                  <button onClick={() => handleDelete(d.id)} className="p-2 bg-accent-rose text-white border-2 border-black hover:scale-110 transition-transform opacity-0 group-hover:opacity-100">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))}
@@ -73,7 +114,7 @@ export default function DeadlinesPage() {
             {Array.from({ length: 31 }).map((_, i) => {
               const day = i + 1;
               const dateStr = `2026-07-${day.toString().padStart(2, '0')}`;
-              const events = mockDeadlines.filter(d => d.date === dateStr);
+              const events = deadlines.filter(d => d.date === dateStr);
               const isToday = day === 8;
               
               return (
@@ -92,6 +133,46 @@ export default function DeadlinesPage() {
           </div>
         )}
       </div>
+
+      {/* ADD MODAL */}
+      {showAdd && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="brutalist-card p-6 bg-white w-full max-w-md shadow-[8px_8px_0px_#000]">
+            <div className="flex items-center justify-between mb-4 pb-2 border-b-2 border-black">
+              <h2 className="text-xl font-black uppercase text-black">Tambah Deadline Baru</h2>
+              <button onClick={() => setShowAdd(false)} className="p-1 hover:bg-bg-secondary border-2 border-transparent hover:border-black transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleAdd} className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold uppercase mb-1">Judul / Nama Tugas</label>
+                <input type="text" name="title" placeholder="Contoh: Claim Airdrop Starknet" className="brutalist-input w-full p-2" required />
+              </div>
+              <div>
+                <label className="block text-sm font-bold uppercase mb-1">Tipe</label>
+                <select name="type" className="brutalist-input w-full p-2 bg-white" required>
+                  <option value="tge">TGE / Airdrop</option>
+                  <option value="college">Tugas Kuliah</option>
+                  <option value="other">Lainnya</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold uppercase mb-1">Tanggal</label>
+                <input type="date" name="date" className="brutalist-input w-full p-2" required />
+              </div>
+              <div>
+                <label className="block text-sm font-bold uppercase mb-1">Catatan Tambahan</label>
+                <input type="text" name="notes" placeholder="Optional" className="brutalist-input w-full p-2" />
+              </div>
+              <button type="submit" className="w-full py-3 bg-accent-emerald text-black font-black uppercase border-2 border-black shadow-[4px_4px_0px_#000] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-[2px_2px_0px_#000] transition-all">
+                Simpan Deadline
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
