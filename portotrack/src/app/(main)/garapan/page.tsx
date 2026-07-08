@@ -6,6 +6,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import type { Project } from '@/lib/types';
 
+// Helper parsing untuk jam pengingat harian
 const parseReminderTime = (desc: string) => {
   if (!desc) return '';
   const match = desc.match(/^\[Reminder:\s*([0-9]{2}:[0-9]{2})\]/);
