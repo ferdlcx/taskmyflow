@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { Plus, X, Search, Check } from 'lucide-react';
+import { searchCoins } from '@/lib/coingecko';
+import type { CoinSearchResult } from '@/lib/types';
 
 // ─── Mock Data ─────────────────────────────────────────
 // TODO: Replace with real data from API/Dexie DB
@@ -41,6 +44,26 @@ export default function HoldingsPage() {
   const [sortBy, setSortBy] = useState<SortKey>('value');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  // Add Asset Modal State
+  const [showAdd, setShowAdd] = useState(false);
+  const [query, setQuery] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [results, setResults] = useState<CoinSearchResult[]>([]);
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!query.trim()) return;
+    setSearching(true);
+    try {
+      const res = await searchCoins(query);
+      setResults(res);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setSearching(false);
+    }
+  };
+
   const filtered = useMemo(() => {
     let list = [...MOCK_HOLDINGS];
 
@@ -65,11 +88,17 @@ export default function HoldingsPage() {
   return (
     <div className="px-4 md:px-8 py-6 md:py-8 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 border-b-2 border-black pb-2">
         <div>
-          <h1 className="text-xl font-bold text-text-primary">Aset Saya</h1>
-          <p className="text-text-muted text-sm mt-0.5">{MOCK_HOLDINGS.length} aset</p>
+          <h1 className="text-3xl font-black uppercase tracking-tight text-black">Aset Saya</h1>
+          <p className="text-text-muted text-sm mt-0.5 font-bold uppercase">{MOCK_HOLDINGS.length} aset</p>
         </div>
+        <button 
+          onClick={() => setShowAdd(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-accent-emerald text-black text-sm font-bold border-2 border-black shadow-[4px_4px_0px_#000] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-[2px_2px_0px_#000] transition-all"
+        >
+          <Plus className="w-5 h-5" /> TAMBAH ASET
+        </button>
       </div>
 
       {/* Search & Sort */}
@@ -168,11 +197,62 @@ export default function HoldingsPage() {
             </div>
           );
         })}
+        {filtered.length === 0 && (
+          <div className="p-8 text-center border-2 border-dashed border-black font-bold uppercase text-text-muted">
+            Tidak ada aset ditemukan.
+          </div>
+        )}
       </div>
 
-      {filtered.length === 0 && (
-        <div className="text-center py-16">
-          <p className="text-text-muted text-sm">Tidak ada aset ditemukan</p>
+      {/* Add Asset Modal */}
+      {showAdd && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="brutalist-card p-6 bg-white w-full max-w-md max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between mb-4 pb-2 border-b-2 border-black">
+              <h2 className="text-xl font-black uppercase text-black">Cari Aset (CoinGecko)</h2>
+              <button onClick={() => setShowAdd(false)} className="p-1 hover:bg-bg-secondary border-2 border-transparent hover:border-black transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSearch} className="flex gap-2 mb-4">
+              <input 
+                type="text" 
+                value={query} 
+                onChange={(e) => setQuery(e.target.value)} 
+                placeholder="Cari nama koin..." 
+                className="brutalist-input flex-1 p-2"
+                autoFocus
+              />
+              <button type="submit" disabled={searching} className="px-4 py-2 bg-accent-amber border-2 border-black font-bold shadow-[2px_2px_0px_#000] disabled:opacity-50 flex items-center justify-center">
+                <Search className="w-5 h-5" />
+              </button>
+            </form>
+
+            <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+              {searching ? (
+                <div className="text-center p-4 font-bold animate-pulse">Mencari...</div>
+              ) : results.length > 0 ? (
+                results.map(r => (
+                  <div key={r.id} className="flex items-center justify-between p-2 border-2 border-black hover:bg-bg-secondary group cursor-pointer transition-colors" onClick={() => { alert(`Memilih ${r.name}`); setShowAdd(false); }}>
+                    <div className="flex items-center gap-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={r.thumb} alt={r.name} className="w-8 h-8 rounded-full border border-black" />
+                      <div>
+                        <p className="font-bold text-black uppercase">{r.name}</p>
+                        <p className="text-xs text-text-muted font-bold">{r.symbol}</p>
+                      </div>
+                    </div>
+                    <div className="hidden group-hover:block p-1 bg-accent-emerald border border-black">
+                      <Plus className="w-4 h-4 text-black" />
+                    </div>
+                  </div>
+                ))
+              ) : query && !searching ? (
+                <div className="text-center p-4 font-bold text-text-muted">Tidak ditemukan.</div>
+              ) : null}
+            </div>
+          </div>
         </div>
       )}
 

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import HabitHeatmap from '@/components/HabitHeatmap';
-import { Plus, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Eye, EyeOff } from 'lucide-react';
 
 // ─── Mock Data ─────────────────────────────────────────
 
@@ -44,7 +44,12 @@ function formatCurrency(amount: number, currency: string = 'IDR') {
 
 export default function DashboardPage() {
   const [currency] = useState(MOCK_CURRENCY);
+  const [hideBalance, setHideBalance] = useState(false);
   const isProfit = MOCK_PNL_AMOUNT >= 0;
+
+  const displayCurrency = (amount: number, cur: string) => {
+    return hideBalance ? '***' : formatCurrency(amount, cur);
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 font-sans">
@@ -64,14 +69,19 @@ export default function DashboardPage() {
 
       {/* Crypto Net Worth Card */}
       <div className="brutalist-card p-6 md:p-8 bg-accent-amber">
-        <p className="text-black font-bold uppercase text-sm mb-2">Total Nilai Portofolio (Crypto)</p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-black font-bold uppercase text-sm">Total Nilai Portofolio (Crypto)</p>
+          <button onClick={() => setHideBalance(!hideBalance)} className="p-1 hover:bg-black/10 transition-colors">
+            {hideBalance ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+          </button>
+        </div>
         <h2 className="text-4xl md:text-5xl font-black text-black mb-4 tracking-tighter">
-          {formatCurrency(MOCK_NET_WORTH, currency)}
+          {displayCurrency(MOCK_NET_WORTH, currency)}
         </h2>
         <div className={`inline-flex items-center gap-2 px-4 py-2 border-2 border-black font-bold shadow-[2px_2px_0px_#000] bg-white`}>
           {isProfit ? <TrendingUp className="w-5 h-5 text-accent-emerald" /> : <TrendingDown className="w-5 h-5 text-accent-rose" />}
           <span className={isProfit ? 'text-accent-emerald' : 'text-accent-rose'}>
-            {isProfit ? '+' : ''}{formatCurrency(MOCK_PNL_AMOUNT, currency)}
+            {isProfit ? '+' : ''}{displayCurrency(MOCK_PNL_AMOUNT, currency)}
           </span>
           <span className="text-black ml-1">({isProfit ? '+' : ''}{MOCK_PNL_PERCENT}%)</span>
         </div>
@@ -86,7 +96,7 @@ export default function DashboardPage() {
           <div className="flex flex-col gap-4">
             <div className="p-4 border-2 border-black bg-bg-secondary shadow-[2px_2px_0px_#000]">
               <p className="text-xs font-bold uppercase text-text-muted mb-1">Total Saldo (Sheet)</p>
-              <p className="text-2xl font-black text-black">{formatCurrency(MOCK_FINANCE.saldo, currency)}</p>
+              <p className="text-2xl font-black text-black">{displayCurrency(MOCK_FINANCE.saldo, currency)}</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="p-3 border-2 border-black bg-accent-emerald/20 shadow-[2px_2px_0px_#000]">
@@ -94,14 +104,14 @@ export default function DashboardPage() {
                   <ArrowUpRight className="w-4 h-4 text-accent-emerald" />
                   <p className="text-xs font-bold uppercase text-black">Pemasukan</p>
                 </div>
-                <p className="text-base font-black text-black">+{formatCurrency(MOCK_FINANCE.income, currency)}</p>
+                <p className="text-base font-black text-black">+{displayCurrency(MOCK_FINANCE.income, currency)}</p>
               </div>
               <div className="p-3 border-2 border-black bg-accent-rose/20 shadow-[2px_2px_0px_#000]">
                 <div className="flex items-center gap-1.5 mb-2">
                   <ArrowDownRight className="w-4 h-4 text-accent-rose" />
                   <p className="text-xs font-bold uppercase text-black">Pengeluaran</p>
                 </div>
-                <p className="text-base font-black text-black">-{formatCurrency(MOCK_FINANCE.expense, currency)}</p>
+                <p className="text-base font-black text-black">-{displayCurrency(MOCK_FINANCE.expense, currency)}</p>
               </div>
             </div>
           </div>

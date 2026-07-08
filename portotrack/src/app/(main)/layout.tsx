@@ -10,7 +10,8 @@ import {
   Link2, 
   Settings, 
   CalendarCheck,
-  Layers
+  Layers,
+  Target
 } from 'lucide-react';
 
 // ─── Navigation Items ──────────────────────────────────
@@ -21,6 +22,7 @@ const navItems = [
   { href: '/holdings', label: 'Aset', icon: Briefcase },
   { href: '/watchlist', label: 'Pantau', icon: Eye },
   { href: '/sources', label: 'Sumber', icon: Link2 },
+  { href: '/garapan', label: 'Garapan', icon: Target },
   { href: '/settings', label: 'Setelan', icon: Settings },
 ];
 
