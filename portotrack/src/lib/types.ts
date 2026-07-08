@@ -97,7 +97,7 @@ export interface WatchlistItem {
   /** FK ke tabel assets */
   asset_id: string;
   /** Target harga dalam IDR untuk notifikasi/limit sell (opsional) */
-  target_price_idr: number | null;
+  target_price_idr?: number | null;
   /** Target harga dalam USD untuk notifikasi/limit sell (opsional) */
   target_price_usd?: number | null;
   /** Catatan pengguna */

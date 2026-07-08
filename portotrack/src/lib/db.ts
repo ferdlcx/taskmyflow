@@ -23,6 +23,7 @@ import type {
   HabitEntry,
   Project,
   GarapanTask,
+  SyncableTable,
 } from './types';
 
 /**
@@ -160,7 +161,7 @@ export const db = new PortoTrackDB();
  * @returns Array record yang sync_status = 'pending'
  */
 export async function getPendingRecords<T>(
-  table: 'sources' | 'transactions' | 'watchlist' | 'fiat_holdings' | 'projects'
+  table: SyncableTable
 ): Promise<T[]> {
   return (await db.table(table).where('sync_status').equals('pending').toArray()) as T[];
 }
@@ -171,7 +172,7 @@ export async function getPendingRecords<T>(
  * @returns Array record yang deleted_at = null
  */
 export async function getActiveRecords<T>(
-  table: 'sources' | 'transactions' | 'watchlist' | 'fiat_holdings' | 'projects'
+  table: SyncableTable
 ): Promise<T[]> {
   return (await db
     .table(table)
@@ -185,7 +186,7 @@ export async function getActiveRecords<T>(
  * @param id - ID record
  */
 export async function markSynced(
-  table: 'sources' | 'transactions' | 'watchlist' | 'fiat_holdings' | 'projects',
+  table: SyncableTable,
   id: string
 ): Promise<void> {
   await db.table(table).update(id, { sync_status: 'synced' as const });
@@ -197,7 +198,7 @@ export async function markSynced(
  * @param id - ID record
  */
 export async function markSyncError(
-  table: 'sources' | 'transactions' | 'watchlist' | 'fiat_holdings' | 'projects',
+  table: SyncableTable,
   id: string
 ): Promise<void> {
   await db.table(table).update(id, { sync_status: 'error' as const });

@@ -37,7 +37,7 @@ export default function GarapanPage() {
             await db.garapan_tasks.add({
               id: crypto.randomUUID(),
               project_id: proj.id,
-              title: `[Daily] ${proj.title || proj.platform}`,
+              title: `[Daily] ${proj.platform}`,
               is_completed: false,
               date: todayStr,
               sync_status: 'pending'
@@ -96,13 +96,12 @@ export default function GarapanPage() {
     await db.projects.add({
       id: crypto.randomUUID(),
       user_id: 'local_user',
-      title: formData.get('title') as string,
-      platform: formData.get('platform') as string,
+      platform: formData.get('title') as string,
       target_date: formData.get('date') as string,
       estimated_reward: formData.get('reward') as string,
       status: 'active',
       is_daily: isDailyChecked ? 1 : 0,
-      notes: formData.get('notes') as string,
+      description: `${formData.get('platform') || ''} - ${formData.get('notes') || ''}`,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       deleted_at: null,
@@ -219,11 +218,14 @@ export default function GarapanPage() {
             <div className="flex justify-between items-start flex-col md:flex-row gap-4 md:gap-0">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className={`text-lg font-black uppercase ${p.status === 'completed' ? 'line-through' : ''}`}>{p.title || p.platform}</h3>
+                  <h3 className={`text-lg font-black uppercase ${p.status === 'completed' ? 'line-through' : ''}`}>{p.platform}</h3>
                   {p.is_daily === 1 && (
                     <span className="text-[9px] font-black bg-accent-purple text-white px-1.5 py-0.5 border border-black uppercase">Daily</span>
                   )}
                 </div>
+                {p.description && (
+                  <p className="text-[10px] font-bold text-text-muted mt-0.5 lowercase">{p.description}</p>
+                )}
                 <div className="flex items-center gap-4 text-xs font-bold text-text-muted mt-1 uppercase">
                   <span>💰 Reward: {p.estimated_reward}</span>
                   <span>📅 Date: {p.target_date}</span>
