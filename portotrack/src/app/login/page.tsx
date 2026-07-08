@@ -165,10 +165,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading || pin.length < 4}
-            className="w-full py-3.5 rounded-xl font-semibold text-white transition-all duration-300
-              gradient-emerald hover:shadow-lg hover:shadow-accent-emerald/25
-              disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none
-              active:scale-[0.98]"
+            className="w-full py-3.5 rounded-xl font-semibold text-white transition-all duration-300 gradient-emerald hover:shadow-lg hover:shadow-accent-emerald/25 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none active:scale-[0.98]"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">

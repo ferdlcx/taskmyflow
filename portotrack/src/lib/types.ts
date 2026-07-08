@@ -247,3 +247,33 @@ export interface CoinMarketData {
   price_change_percentage_24h: number | null;
   total_volume: number;
 }
+
+// ---------------------------------------------------------------------------
+// Phase 2 Types
+// ---------------------------------------------------------------------------
+
+export interface Deadline {
+  id: string;
+  title: string;
+  date: string;
+  type: 'tge' | 'college' | 'other';
+  notes: string | null;
+  sync_status: SyncStatus;
+  updated_at?: string;
+  deleted_at?: string | null;
+}
+
+export interface HabitEntry {
+  date: string;
+  habit_id: string;
+  status: boolean;
+  sync_status: SyncStatus;
+  updated_at?: string;
+}
+
+export interface FinanceSummary {
+  total_balance: number;
+  income_month: number;
+  expense_month: number;
+  last_synced: string;
+}

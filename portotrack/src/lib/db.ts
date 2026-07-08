@@ -11,7 +11,7 @@
  * - Tanpa prefix = non-unique index
  */
 
-import Dexie, { type EntityTable } from 'dexie';
+import Dexie, { type EntityTable, type Table } from 'dexie';
 import type {
   Source,
   Asset,
@@ -19,6 +19,8 @@ import type {
   WatchlistItem,
   FiatHolding,
   PriceCache,
+  Deadline,
+  HabitEntry,
 } from './types';
 
 /**
@@ -32,6 +34,8 @@ class PortoTrackDB extends Dexie {
   watchlist!: EntityTable<WatchlistItem, 'id'>;
   fiat_holdings!: EntityTable<FiatHolding, 'id'>;
   price_cache!: EntityTable<PriceCache, 'coingecko_id'>;
+  deadlines!: EntityTable<Deadline, 'id'>;
+  habits!: Table<HabitEntry>;
 
   constructor() {
     super('portotrack-db');
@@ -88,6 +92,22 @@ class PortoTrackDB extends Dexie {
         'updated_at',
         'deleted_at',
         '[user_id+source_id]',
+      ].join(', '),
+
+      deadlines: [
+        '&id',
+        'date',
+        'sync_status',
+        'updated_at',
+        'deleted_at'
+      ].join(', '),
+
+      habits: [
+        '[date+habit_id]',
+        'date',
+        'habit_id',
+        'sync_status',
+        'updated_at'
       ].join(', '),
 
       // --- Tabel lokal (tidak disinkronisasi) ---
